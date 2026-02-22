@@ -297,7 +297,8 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
     menuActions, 
     isImmersive,
     isStreaming = false,
-    onArenaSelect
+    onArenaSelect,
+    onArenaRetry // Added here
 }) => {
     const { activePersona } = useUserPersona();
     const { showToast } = useToast();
@@ -533,6 +534,7 @@ export const MessageBubble = memo(MessageBubbleComponent, (prev, next) => {
         prev.message.arena?.modelB.completed === next.message.arena?.modelB.completed && // Check completion B
         prev.message.arena?.selected === next.message.arena?.selected &&
         
-        compareMenuActions(prev.menuActions, next.menuActions)
+        compareMenuActions(prev.menuActions, next.menuActions) &&
+        prev.onArenaRetry === next.onArenaRetry // Ensure onArenaRetry is checked
     );
 });
