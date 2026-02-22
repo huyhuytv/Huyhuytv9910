@@ -293,16 +293,16 @@ export const useChatFlow = () => {
 
         // 2. Reset Slot State
         const slotKey = slot === 'A' ? 'modelA' : 'modelB';
-        state.updateMessage(messageId, {
+        freshState.updateMessage(messageId, {
             arena: {
                 ...aiMsg.arena,
                 [slotKey]: { ...aiMsg.arena[slotKey], content: '', completed: false }
             }
         });
 
-        state.setLoading(true);
+        freshState.setLoading(true);
         const ac = new AbortController();
-        state.setAbortController(ac);
+        freshState.setAbortController(ac);
 
         try {
             // 3. Re-construct Prompt
@@ -352,7 +352,7 @@ export const useChatFlow = () => {
                         ...currentMsg.arena,
                         [slotKey]: { ...currentMsg.arena[slotKey], content: slotContent }
                     };
-                    state.updateMessage(messageId, { arena: newArena });
+                    freshState.updateMessage(messageId, { arena: newArena });
                 }
             }
 
@@ -363,7 +363,7 @@ export const useChatFlow = () => {
                      ...currentMsg.arena,
                      [slotKey]: { ...currentMsg.arena[slotKey], content: `[Lỗi: ${e.message}]` }
                  };
-                 state.updateMessage(messageId, { arena: newArena });
+                 freshState.updateMessage(messageId, { arena: newArena });
              }
         } finally {
             // Mark completed
@@ -373,13 +373,13 @@ export const useChatFlow = () => {
                     ...currentMsg.arena,
                     [slotKey]: { ...currentMsg.arena[slotKey], completed: true }
                 };
-                state.updateMessage(messageId, { arena: newArena });
+                freshState.updateMessage(messageId, { arena: newArena });
             }
-            state.setLoading(false);
-            state.setAbortController(null);
+            freshState.setLoading(false);
+            freshState.setAbortController(null);
         }
 
-    }, [state, lorebooks, showToast]);
+    }, [lorebooks, showToast]);
 
 
     // --- MANUAL MYTHIC TRIGGER ---
