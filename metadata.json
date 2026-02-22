@@ -1,0 +1,5 @@
+{
+  "name": "A1",
+  "description": "An advanced tool to import, validate, analyze, edit, and enhance SillyTavern character cards using AI. Check token counts, get improvement suggestions from Gemini, and export your creations.",
+  "requestFramePermissions": []
+}

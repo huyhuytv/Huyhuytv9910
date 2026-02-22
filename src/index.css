@@ -1,0 +1,107 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Scrollbar for Chat */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: #475569; /* slate-600 */
+  border-radius: 20px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: #64748b; /* slate-500 */
+}
+
+/* Custom styles for rendered Markdown in chat bubbles */
+.markdown-content p {
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content p:first-child {
+  margin-top: 0;
+}
+.markdown-content p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content strong {
+  color: #f1f5f9; /* slate-100 */
+}
+
+.markdown-content em {
+  color: #cbd5e1; /* slate-300 */
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content ul {
+  list-style-type: disc;
+}
+
+.markdown-content ol {
+  list-style-type: decimal;
+}
+
+.markdown-content li {
+  margin-bottom: 0.25rem;
+}
+
+.markdown-content blockquote {
+  border-left: 4px solid #475569; /* slate-600 */
+  padding-left: 1rem;
+  margin: 0.5rem 0;
+  font-style: italic;
+  color: #94a3b8; /* slate-400 */
+}
+
+.markdown-content hr {
+    border-color: #475569; /* slate-600 */
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.markdown-content a {
+  color: #38bdf8; /* sky-400 */
+  text-decoration: underline;
+}
+
+.markdown-content a:hover {
+    color: #7dd3fc; /* sky-300 */
+}
+
+.markdown-content code {
+    background-color: #1e293b; /* slate-800 */
+    color: #f87171; /* red-400 */
+    padding: 0.2rem 0.4rem;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+}
+
+.markdown-content pre {
+    background-color: #0f172a; /* slate-900 */
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+}
+
+.markdown-content pre code {
+    background-color: transparent;
+    padding: 0;
+    color: inherit;
+}
