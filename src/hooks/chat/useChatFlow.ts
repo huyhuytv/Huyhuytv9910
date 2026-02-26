@@ -8,7 +8,7 @@ import { useLorebook } from '../../contexts/LorebookContext';
 import { useChatLogger } from '../useChatLogger';
 import { useWorldSystem } from '../useWorldSystem';
 import { MedusaService, syncDatabaseToLorebook, parseCustomActions, applyMedusaActions } from '../../services/medusaService'; 
-import { getApiKey, getGlobalContextSettings, getConnectionSettings } from '../../services/settingsService';
+import { getApiKey, getGlobalContextSettings, getConnectionSettings, getProxyProfiles } from '../../services/settingsService';
 import { useToast } from '../../components/ToastSystem';
 import type { WorldInfoEntry, InteractiveErrorState, ChatMessage } from '../../types';
 import { countTotalTurns } from '../useChatMemory';
@@ -349,8 +349,28 @@ export const useChatFlow = () => {
 
             // 4. Stream Request
             let slotContent = "";
+            
+            // NEW: Determine Connection Override for Retry
+            let connectionOverride = undefined;
+            if (targetSource === 'proxy' && freshState.arenaUserProfileId) {
+                // Only apply override if we are retrying the Arena slot (Model B)
+                // If Model A is also proxy, it should use global settings unless we want to support A/B testing same provider with different profiles (out of scope for now)
+                // Logic: If slot is B, use arenaUserProfileId. If slot is A, use global.
+                if (slot === 'B') {
+                    const profiles = getProxyProfiles();
+                    const profile = profiles.find(p => p.id === freshState.arenaUserProfileId);
+                    if (profile) {
+                        connectionOverride = {
+                            url: profile.url,
+                            password: profile.password,
+                            legacyMode: profile.legacyMode
+                        };
+                    }
+                }
+            }
+
             // Pass targetSource as overrideSource
-            const stream = sendChatRequestStream(constructed.fullPrompt, freshState.preset!, ac.signal, targetModelId, targetSource);
+            const stream = sendChatRequestStream(constructed.fullPrompt, freshState.preset!, ac.signal, targetModelId, targetSource, connectionOverride);
             
             for await (const chunk of stream) {
                 if (ac.signal.aborted) break;
@@ -546,10 +566,29 @@ export const useChatFlow = () => {
                     const modelB_ID = freshState.arenaModelId;
                     const modelB_Source = freshState.arenaProvider || 'gemini'; // NEW: Use Arena Provider
                     
-                    const runStream = async (modelId: string, slot: 'modelA' | 'modelB', sourceOverride?: 'gemini' | 'openrouter' | 'proxy') => {
+                    // NEW: Determine Model B Connection Override (if Proxy Profile selected)
+                    let modelB_ConnectionOverride = undefined;
+                    if (modelB_Source === 'proxy' && freshState.arenaUserProfileId) {
+                        const profiles = getProxyProfiles();
+                        const profile = profiles.find(p => p.id === freshState.arenaUserProfileId);
+                        if (profile) {
+                            modelB_ConnectionOverride = {
+                                url: profile.url,
+                                password: profile.password,
+                                legacyMode: profile.legacyMode
+                            };
+                        }
+                    }
+
+                    const runStream = async (
+                        modelId: string, 
+                        slot: 'modelA' | 'modelB', 
+                        sourceOverride?: 'gemini' | 'openrouter' | 'proxy',
+                        connectionOverride?: { url: string; password?: string; legacyMode?: boolean }
+                    ) => {
                         let slotContent = "";
                         try {
-                            const stream = sendChatRequestStream(fullPrompt, freshState.preset!, ac.signal, modelId, sourceOverride);
+                            const stream = sendChatRequestStream(fullPrompt, freshState.preset!, ac.signal, modelId, sourceOverride, connectionOverride);
                             for await (const chunk of stream) {
                                 if (ac.signal.aborted) break;
                                 slotContent += chunk;
@@ -589,7 +628,7 @@ export const useChatFlow = () => {
                     // Run both independently
                     await Promise.all([
                         runStream(modelA_ID, 'modelA', connection.source), // Model A uses Main Source
-                        runStream(modelB_ID, 'modelB', modelB_Source)      // Model B uses Arena Source
+                        runStream(modelB_ID, 'modelB', modelB_Source, modelB_ConnectionOverride) // Model B uses Arena Source & Connection Override
                     ]);
                     
                     playNotification('ai');

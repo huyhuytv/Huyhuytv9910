@@ -64,6 +64,7 @@ interface ChatState {
     isArenaMode: boolean;
     arenaModelId: string | null; // The challenger model ID
     arenaProvider: 'gemini' | 'openrouter' | 'proxy' | null; // NEW: Challenger Provider
+    arenaUserProfileId: string | null; // NEW: Selected Proxy Profile ID for Arena
 
     abortController: AbortController | null;
 }
@@ -107,6 +108,7 @@ interface ChatActions {
     setArenaMode: (enabled: boolean) => void;
     setArenaModelId: (modelId: string) => void;
     setArenaProvider: (provider: 'gemini' | 'openrouter' | 'proxy') => void; // NEW
+    setArenaUserProfileId: (profileId: string | null) => void; // NEW
 
     clearLogs: () => void;
     resetStore: () => void;
@@ -131,7 +133,7 @@ const initialState: Omit<ChatState, 'abortController'> = {
     visualState: {}, quickReplies: [], scriptButtons: [],
     logs: { turns: [], systemLog: [], worldInfoLog: [], smartScanLog: [], mythicLog: [], networkLog: [] },
     isLoading: false, isSummarizing: false, isInputLocked: false, isAutoLooping: false, error: null,
-    isArenaMode: false, arenaModelId: null, arenaProvider: null
+    isArenaMode: false, arenaModelId: null, arenaProvider: null, arenaUserProfileId: null
 };
 
 export const useChatStore = create<ChatState & ChatActions>()(
@@ -192,6 +194,7 @@ export const useChatStore = create<ChatState & ChatActions>()(
         setArenaMode: (enabled) => set((state) => { state.isArenaMode = enabled; }),
         setArenaModelId: (modelId) => set((state) => { state.arenaModelId = modelId; }),
         setArenaProvider: (provider) => set((state) => { state.arenaProvider = provider; }),
+        setArenaUserProfileId: (profileId) => set((state) => { state.arenaUserProfileId = profileId; }),
 
         clearLogs: () => set((state) => { state.logs = { turns: [], systemLog: [], worldInfoLog: [], smartScanLog: [], mythicLog: [], networkLog: [] }; }),
         resetStore: () => set((state) => { Object.assign(state, initialState); state.abortController = null; }),

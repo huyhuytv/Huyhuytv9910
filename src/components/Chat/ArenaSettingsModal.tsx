@@ -7,7 +7,9 @@ import {
     getProxyUrl, 
     getProxyPassword, 
     getProxyLegacyMode,
-    getStoredProxyModels
+    getStoredProxyModels,
+    getProxyProfiles,
+    ProxyProfile
 } from '../../services/settingsService';
 import { getOpenRouterModels } from '../../services/geminiService';
 import { fetchProxyModels } from '../../services/api/proxyApi';
@@ -25,7 +27,9 @@ export const ArenaSettingsModal: React.FC<ArenaSettingsModalProps> = ({ isOpen, 
         arenaProvider, 
         setArenaProvider, 
         arenaModelId, 
-        setArenaModelId 
+        setArenaModelId,
+        arenaUserProfileId,
+        setArenaUserProfileId
     } = useChatStore();
     
     const { showToast } = useToast();
@@ -34,6 +38,7 @@ export const ArenaSettingsModal: React.FC<ArenaSettingsModalProps> = ({ isOpen, 
     // Local state for fetched models
     const [openRouterModels, setOpenRouterModels] = useState<OpenRouterModel[]>([]);
     const [proxyModels, setProxyModels] = useState<{id: string, name: string}[]>([]);
+    const [proxyProfiles, setProxyProfiles] = useState<ProxyProfile[]>([]);
     
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -42,6 +47,9 @@ export const ArenaSettingsModal: React.FC<ArenaSettingsModalProps> = ({ isOpen, 
     useEffect(() => {
         if (isOpen && !arenaProvider) {
             setArenaProvider('gemini'); // Default
+        }
+        if (isOpen) {
+            setProxyProfiles(getProxyProfiles());
         }
     }, [isOpen, arenaProvider, setArenaProvider]);
 
@@ -74,24 +82,40 @@ export const ArenaSettingsModal: React.FC<ArenaSettingsModalProps> = ({ isOpen, 
                         setIsLoading(false);
                         return;
                     }
-                    // Check if we already have models to avoid spamming (optional, but good)
-                    // But user requested "auto fetch when selected", so we should fetch.
                     const models = await getOpenRouterModels();
                     setOpenRouterModels(models);
                 } 
                 else if (arenaProvider === 'proxy') {
-                    const url = getProxyUrl();
+                    // Determine URL/Key source: Profile or Global
+                    let url = getProxyUrl();
+                    let password = getProxyPassword();
+                    let legacy = getProxyLegacyMode();
+
+                    if (arenaUserProfileId) {
+                        const profile = proxyProfiles.find(p => p.id === arenaUserProfileId);
+                        if (profile) {
+                            url = profile.url;
+                            password = profile.password;
+                            legacy = profile.legacyMode;
+                        }
+                    }
+
                     if (!url) {
-                        setError("Chưa cấu hình Proxy URL trong Cài đặt chính.");
+                        setError("Chưa cấu hình Proxy URL.");
                         setIsLoading(false);
                         return;
                     }
-                    const password = getProxyPassword();
-                    const legacy = getProxyLegacyMode();
                     
                     // Try to use stored models first for instant UI, then update
-                    const stored = getStoredProxyModels();
-                    if (stored.length > 0) setProxyModels(stored);
+                    // Only use stored global models if NO profile is selected
+                    if (!arenaUserProfileId) {
+                        const stored = getStoredProxyModels();
+                        if (stored.length > 0) setProxyModels(stored);
+                    } else {
+                        // Clear models temporarily when switching profiles to avoid confusion
+                        // Or keep empty until fetch
+                        setProxyModels([]); 
+                    }
 
                     const models = await fetchProxyModels(url, password, legacy);
                     setProxyModels(models);
@@ -105,7 +129,7 @@ export const ArenaSettingsModal: React.FC<ArenaSettingsModalProps> = ({ isOpen, 
         };
 
         fetchModels();
-    }, [arenaProvider, isOpen]);
+    }, [arenaProvider, isOpen, arenaUserProfileId, proxyProfiles]); // Re-fetch when profile changes
 
     // Determine available options based on provider
     const currentOptions = useMemo(() => {
@@ -127,7 +151,7 @@ export const ArenaSettingsModal: React.FC<ArenaSettingsModalProps> = ({ isOpen, 
     if (!isOpen) return null;
 
     return (
-        <div className="absolute top-16 right-4 w-80 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 animate-fade-in-up flex flex-col max-h-[80vh]">
+        <div ref={modalRef} className="absolute top-16 right-4 w-80 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 animate-fade-in-up flex flex-col max-h-[80vh]">
             {/* Header */}
             <div className="p-3 border-b border-slate-700 bg-slate-900/50 rounded-t-xl shrink-0 flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -146,7 +170,11 @@ export const ArenaSettingsModal: React.FC<ArenaSettingsModalProps> = ({ isOpen, 
                         {(['gemini', 'openrouter', 'proxy'] as const).map(p => (
                             <button
                                 key={p}
-                                onClick={() => setArenaProvider(p)}
+                                onClick={() => {
+                                    setArenaProvider(p);
+                                    // Reset profile when switching away from proxy, or keep it?
+                                    // Better to keep it or reset? Let's keep it simple.
+                                }}
                                 className={`flex-1 py-1.5 text-xs font-bold rounded transition-colors ${
                                     arenaProvider === p 
                                     ? 'bg-rose-600 text-white shadow-sm' 
@@ -158,6 +186,23 @@ export const ArenaSettingsModal: React.FC<ArenaSettingsModalProps> = ({ isOpen, 
                         ))}
                     </div>
                 </div>
+
+                {/* PROXY PROFILE SELECTOR (NEW) */}
+                {arenaProvider === 'proxy' && (
+                    <div className="space-y-2 animate-fade-in-up">
+                        <label className="text-[10px] font-bold text-emerald-400 uppercase">Cấu hình Proxy (Profile)</label>
+                        <select
+                            value={arenaUserProfileId || ''}
+                            onChange={(e) => setArenaUserProfileId(e.target.value || null)}
+                            className="w-full bg-slate-900 border border-slate-600 rounded text-xs p-2 text-white focus:border-emerald-500 outline-none"
+                        >
+                            <option value="">-- Mặc định (Global Settings) --</option>
+                            {proxyProfiles.map(p => (
+                                <option key={p.id} value={p.id}>{p.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                )}
 
                 {/* Model Selector */}
                 <div className="space-y-2">
@@ -186,7 +231,7 @@ export const ArenaSettingsModal: React.FC<ArenaSettingsModalProps> = ({ isOpen, 
                 </div>
 
                 <div className="text-[10px] text-slate-500 italic">
-                    * Lưu ý: Cấu hình chi tiết (API Key, URL) được lấy từ Cài đặt chính.
+                    * Lưu ý: Cấu hình chi tiết (API Key, URL) được lấy từ Cài đặt chính hoặc Profile đã chọn.
                 </div>
             </div>
         </div>

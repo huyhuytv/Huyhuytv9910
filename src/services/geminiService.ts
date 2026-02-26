@@ -20,7 +20,8 @@ export async function sendChatRequest(
     fullPrompt: string,
     settings: SillyTavernPreset,
     overrideModel?: string, // New Parameter
-    overrideSource?: 'gemini' | 'openrouter' | 'proxy' // NEW: Override Source
+    overrideSource?: 'gemini' | 'openrouter' | 'proxy', // NEW: Override Source
+    overrideConnection?: { url: string; password?: string; legacyMode?: boolean } // NEW: Override Connection
 ): Promise<{ response: GenerateContentResponse }> {
     const connection = getConnectionSettings();
     const source = overrideSource || connection.source;
@@ -31,7 +32,7 @@ export async function sendChatRequest(
     const targetModel = overrideModel || (source === 'gemini' ? connection.gemini_model : (source === 'proxy' ? connection.proxy_model : connection.openrouter_model));
 
     if (source === 'proxy') {
-        const text = await callProxy(targetModel, fullPrompt, settings);
+        const text = await callProxy(targetModel, fullPrompt, settings, overrideConnection);
         return { response: { text } as GenerateContentResponse };
     }
 
@@ -54,7 +55,8 @@ export async function* sendChatRequestStream(
     settings: SillyTavernPreset,
     signal?: AbortSignal, // NEW: Abort Signal
     overrideModel?: string, // NEW: Specific model for Arena mode or testing
-    overrideSource?: 'gemini' | 'openrouter' | 'proxy' // NEW: Override Source
+    overrideSource?: 'gemini' | 'openrouter' | 'proxy', // NEW: Override Source
+    overrideConnection?: { url: string; password?: string; legacyMode?: boolean } // NEW: Override Connection
 ): AsyncGenerator<string, void, unknown> {
     const connection = getConnectionSettings();
     const source = overrideSource || connection.source;
@@ -64,7 +66,7 @@ export async function* sendChatRequestStream(
 
     // 1. Handle Proxy Streaming
     if (source === 'proxy') {
-        const stream = callProxyStream(targetModel, fullPrompt, settings, signal);
+        const stream = callProxyStream(targetModel, fullPrompt, settings, signal, overrideConnection);
         for await (const chunk of stream) {
             yield chunk;
         }

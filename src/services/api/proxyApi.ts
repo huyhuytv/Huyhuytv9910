@@ -7,11 +7,11 @@ export const callProxy = async (
     model: string,
     prompt: string,
     settings: SillyTavernPreset,
-    overrideConfig?: { url: string, password?: string, isLegacy?: boolean } // NEW
+    overrideConnection?: { url: string; password?: string; legacyMode?: boolean } // NEW
 ): Promise<string> => {
-    const proxyUrl = overrideConfig?.url || getProxyUrl();
-    const proxyPassword = overrideConfig?.password ?? getProxyPassword();
-    const isLegacyMode = overrideConfig?.isLegacy ?? getProxyLegacyMode();
+    const proxyUrl = overrideConnection?.url || getProxyUrl();
+    const proxyPassword = overrideConnection?.password ?? getProxyPassword();
+    const isLegacyMode = overrideConnection?.legacyMode ?? getProxyLegacyMode();
     const cleanUrl = proxyUrl.trim().replace(/\/$/, '');
 
     const payload = {
@@ -118,11 +118,11 @@ export async function* callProxyStream(
     prompt: string,
     settings: SillyTavernPreset,
     signal?: AbortSignal,
-    overrideConfig?: { url: string, password?: string, isLegacy?: boolean } // NEW
+    overrideConnection?: { url: string; password?: string; legacyMode?: boolean } // NEW
 ): AsyncGenerator<string, void, unknown> {
-    const proxyUrl = overrideConfig?.url || getProxyUrl();
-    const proxyPassword = overrideConfig?.password ?? getProxyPassword();
-    const isLegacyMode = overrideConfig?.isLegacy ?? getProxyLegacyMode();
+    const proxyUrl = overrideConnection?.url || getProxyUrl();
+    const proxyPassword = overrideConnection?.password ?? getProxyPassword();
+    const isLegacyMode = overrideConnection?.legacyMode ?? getProxyLegacyMode();
     const cleanUrl = proxyUrl.trim().replace(/\/$/, '');
 
     const payload = {
