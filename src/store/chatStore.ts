@@ -63,6 +63,7 @@ interface ChatState {
     // Arena Mode State
     isArenaMode: boolean;
     arenaModelId: string | null; // The challenger model ID
+    arenaProfileId: string | null; // The challenger proxy profile ID
 
     abortController: AbortController | null;
 }
@@ -105,6 +106,7 @@ interface ChatActions {
     // Arena Actions
     setArenaMode: (enabled: boolean) => void;
     setArenaModelId: (modelId: string) => void;
+    setArenaProfileId: (profileId: string | null) => void;
 
     clearLogs: () => void;
     resetStore: () => void;
@@ -129,7 +131,7 @@ const initialState: Omit<ChatState, 'abortController'> = {
     visualState: {}, quickReplies: [], scriptButtons: [],
     logs: { turns: [], systemLog: [], worldInfoLog: [], smartScanLog: [], mythicLog: [], networkLog: [] },
     isLoading: false, isSummarizing: false, isInputLocked: false, isAutoLooping: false, error: null,
-    isArenaMode: false, arenaModelId: null
+    isArenaMode: false, arenaModelId: null, arenaProfileId: null
 };
 
 export const useChatStore = create<ChatState & ChatActions>()(
@@ -189,6 +191,7 @@ export const useChatStore = create<ChatState & ChatActions>()(
 
         setArenaMode: (enabled) => set((state) => { state.isArenaMode = enabled; }),
         setArenaModelId: (modelId) => set((state) => { state.arenaModelId = modelId; }),
+        setArenaProfileId: (profileId) => set((state) => { state.arenaProfileId = profileId; }),
 
         clearLogs: () => set((state) => { state.logs = { turns: [], systemLog: [], worldInfoLog: [], smartScanLog: [], mythicLog: [], networkLog: [] }; }),
         resetStore: () => set((state) => { Object.assign(state, initialState); state.abortController = null; }),

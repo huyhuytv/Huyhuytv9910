@@ -6,11 +6,12 @@ import { useChatStore } from '../../store/chatStore';
 export const callProxy = async (
     model: string,
     prompt: string,
-    settings: SillyTavernPreset
+    settings: SillyTavernPreset,
+    overrideConfig?: { url: string, password?: string, isLegacy?: boolean } // NEW
 ): Promise<string> => {
-    const proxyUrl = getProxyUrl();
-    const proxyPassword = getProxyPassword();
-    const isLegacyMode = getProxyLegacyMode();
+    const proxyUrl = overrideConfig?.url || getProxyUrl();
+    const proxyPassword = overrideConfig?.password ?? getProxyPassword();
+    const isLegacyMode = overrideConfig?.isLegacy ?? getProxyLegacyMode();
     const cleanUrl = proxyUrl.trim().replace(/\/$/, '');
 
     const payload = {
@@ -116,11 +117,12 @@ export async function* callProxyStream(
     model: string,
     prompt: string,
     settings: SillyTavernPreset,
-    signal?: AbortSignal
+    signal?: AbortSignal,
+    overrideConfig?: { url: string, password?: string, isLegacy?: boolean } // NEW
 ): AsyncGenerator<string, void, unknown> {
-    const proxyUrl = getProxyUrl();
-    const proxyPassword = getProxyPassword();
-    const isLegacyMode = getProxyLegacyMode();
+    const proxyUrl = overrideConfig?.url || getProxyUrl();
+    const proxyPassword = overrideConfig?.password ?? getProxyPassword();
+    const isLegacyMode = overrideConfig?.isLegacy ?? getProxyLegacyMode();
     const cleanUrl = proxyUrl.trim().replace(/\/$/, '');
 
     const payload = {

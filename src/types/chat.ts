@@ -98,6 +98,7 @@ export interface ChatSession {
     // --- ARENA MODE STATE (NEW) ---
     isArenaMode?: boolean;
     arenaModelId?: string | null;
+    arenaProfileId?: string | null;
     // -----------------------------
 
     // Meta

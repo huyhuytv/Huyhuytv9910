@@ -8,7 +8,7 @@ import { useLorebook } from '../../contexts/LorebookContext';
 import { useChatLogger } from '../useChatLogger';
 import { useWorldSystem } from '../useWorldSystem';
 import { MedusaService, syncDatabaseToLorebook, parseCustomActions, applyMedusaActions } from '../../services/medusaService'; 
-import { getApiKey, getGlobalContextSettings, getConnectionSettings } from '../../services/settingsService';
+import { getApiKey, getGlobalContextSettings, getConnectionSettings, getProxyProfiles } from '../../services/settingsService';
 import { useToast } from '../../components/ToastSystem';
 import type { WorldInfoEntry, InteractiveErrorState, ChatMessage } from '../../types';
 import { countTotalTurns } from '../useChatMemory';

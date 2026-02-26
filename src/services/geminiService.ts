@@ -19,16 +19,17 @@ const safetySettings = [
 export async function sendChatRequest(
     fullPrompt: string,
     settings: SillyTavernPreset,
-    overrideModel?: string // New Parameter
+    overrideModel?: string,
+    proxyConfig?: { url: string, password?: string, isLegacy?: boolean } // NEW
 ): Promise<{ response: GenerateContentResponse }> {
     const connection = getConnectionSettings();
-    const source = connection.source;
+    const source = proxyConfig ? 'proxy' : connection.source;
 
     // Use override model if provided, else fall back to connection settings
     const targetModel = overrideModel || (source === 'gemini' ? connection.gemini_model : (source === 'proxy' ? connection.proxy_model : connection.openrouter_model));
 
     if (source === 'proxy') {
-        const text = await callProxy(targetModel, fullPrompt, settings);
+        const text = await callProxy(targetModel, fullPrompt, settings, proxyConfig);
         return { response: { text } as GenerateContentResponse };
     }
 
@@ -50,17 +51,18 @@ export async function* sendChatRequestStream(
     fullPrompt: string,
     settings: SillyTavernPreset,
     signal?: AbortSignal, // NEW: Abort Signal
-    overrideModel?: string // NEW: Specific model for Arena mode or testing
+    overrideModel?: string, // NEW: Specific model for Arena mode or testing
+    proxyConfig?: { url: string, password?: string, isLegacy?: boolean } // NEW
 ): AsyncGenerator<string, void, unknown> {
     const connection = getConnectionSettings();
-    const source = connection.source;
+    const source = proxyConfig ? 'proxy' : connection.source;
     
     // Determine Model ID: Override > Settings
     const targetModel = overrideModel || (source === 'gemini' ? connection.gemini_model : (source === 'proxy' ? connection.proxy_model : connection.openrouter_model));
 
     // 1. Handle Proxy Streaming
     if (source === 'proxy') {
-        const stream = callProxyStream(targetModel, fullPrompt, settings, signal);
+        const stream = callProxyStream(targetModel, fullPrompt, settings, signal, proxyConfig);
         for await (const chunk of stream) {
             yield chunk;
         }

@@ -12,8 +12,11 @@ import {
     PROXY_MODEL_OPTIONS,
     getActiveModel,
     getStoredProxyModels,
-    StoredProxyModel
+    StoredProxyModel,
+    getProxyProfiles, // NEW
+    ProxyProfile // NEW
 } from '../../services/settingsService';
+import { fetchProxyModels } from '../../services/api/proxyApi'; // NEW
 import { ToggleInput } from '../ui/ToggleInput';
 
 interface ChatHeaderProps {
@@ -35,6 +38,129 @@ interface ChatHeaderProps {
     isRpgDashboardOpen?: boolean;
     hasRpgData?: boolean;
 }
+
+// --- Arena Config Modal ---
+const ArenaConfigModal: React.FC<{
+    isOpen: boolean;
+    onClose: () => void;
+}> = ({ isOpen, onClose }) => {
+    const modalRef = useRef<HTMLDivElement>(null);
+    const { arenaModelId, setArenaModelId, arenaProfileId, setArenaProfileId } = useChatStore();
+    const [proxyProfiles, setProxyProfiles] = useState<ProxyProfile[]>([]);
+    const [availableModels, setAvailableModels] = useState<{id: string, name: string}[]>([]);
+    const [isLoadingModels, setIsLoadingModels] = useState(false);
+    const conn = getConnectionSettings();
+
+    // Load Profiles
+    useEffect(() => {
+        if (isOpen) {
+            setProxyProfiles(getProxyProfiles());
+        }
+    }, [isOpen]);
+
+    // Fetch Models logic
+    useEffect(() => {
+        const loadModels = async () => {
+            // 1. If Main Source is NOT Proxy, just show default options (or handle differently)
+            if (conn.source !== 'proxy') {
+                setAvailableModels(MODEL_OPTIONS); // Fallback
+                return;
+            }
+
+            // 2. If Main Source IS Proxy
+            if (!arenaProfileId) {
+                // Case A: Use Main Proxy (Default)
+                // We can use stored models or fetch them. 
+                // For now, let's use stored models + default options
+                const stored = getStoredProxyModels();
+                const combined = [...stored, ...PROXY_MODEL_OPTIONS];
+                // Dedup
+                const unique = new Map<string, {id: string, name: string}>();
+                combined.forEach(m => unique.set(m.id, m));
+                setAvailableModels(Array.from(unique.values()));
+            } else {
+                // Case B: Use Selected Profile
+                const profile = proxyProfiles.find(p => p.id === arenaProfileId);
+                if (profile) {
+                    setIsLoadingModels(true);
+                    try {
+                        const models = await fetchProxyModels(profile.url, profile.password, profile.legacyMode);
+                        setAvailableModels(models);
+                    } catch (e) {
+                        console.error("Failed to fetch arena models", e);
+                        setAvailableModels([]); // Or show error
+                    } finally {
+                        setIsLoadingModels(false);
+                    }
+                }
+            }
+        };
+
+        if (isOpen) {
+            loadModels();
+        }
+    }, [isOpen, arenaProfileId, conn.source, proxyProfiles]);
+
+    // Handle Click Outside
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (modalRef.current && !modalRef.current.contains(event.target as Node)) {
+                onClose();
+            }
+        };
+        if (isOpen) document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, [isOpen, onClose]);
+
+    if (!isOpen) return null;
+
+    return (
+        <div ref={modalRef} className="absolute top-10 right-0 w-64 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 animate-fade-in-up flex flex-col p-3">
+            <div className="flex justify-between items-center mb-2 border-b border-slate-700 pb-1">
+                <h3 className="text-xs font-bold text-rose-400 uppercase">Cấu hình Đấu trường</h3>
+                <button onClick={onClose} className="text-slate-400 hover:text-white">
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                </button>
+            </div>
+
+            {/* Provider Selection (Only if Main is Proxy) */}
+            {conn.source === 'proxy' && (
+                <div className="mb-3">
+                    <label className="block text-[10px] font-bold text-slate-400 mb-1">Nguồn Đối thủ</label>
+                    <select
+                        value={arenaProfileId || ''}
+                        onChange={(e) => setArenaProfileId(e.target.value || null)}
+                        className="w-full bg-slate-900 border border-slate-600 rounded text-xs p-1.5 text-white focus:border-rose-500 outline-none"
+                    >
+                        <option value="">Proxy Chính (Mặc định)</option>
+                        {proxyProfiles.map(p => (
+                            <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                    </select>
+                </div>
+            )}
+
+            {/* Model Selection */}
+            <div className="mb-1">
+                <label className="block text-[10px] font-bold text-slate-400 mb-1">
+                    Model Đối thủ
+                    {isLoadingModels && <span className="ml-2 text-rose-400 animate-pulse">Loading...</span>}
+                </label>
+                <select
+                    value={arenaModelId || ''}
+                    onChange={(e) => setArenaModelId(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-600 rounded text-xs p-1.5 text-white focus:border-rose-500 outline-none"
+                    disabled={isLoadingModels}
+                >
+                    <option value="" disabled>Chọn Model...</option>
+                    {availableModels.map(m => (
+                        <option key={m.id} value={m.id}>{m.name}</option>
+                    ))}
+                </select>
+            </div>
+        </div>
+    );
+};
 
 const ChatSettingsModal: React.FC<{
     isOpen: boolean;
@@ -493,16 +619,13 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 }) => {
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
     const [isConfigMenuOpen, setIsConfigMenuOpen] = useState(false);
+    const [isArenaConfigOpen, setIsArenaConfigOpen] = useState(false); // NEW
     const [refreshKey, setRefreshKey] = useState(0); // To force re-render of badge
     const triggerRef = useRef<HTMLButtonElement>(null);
     
     // Arena Mode Logic
-    const { isArenaMode, setArenaMode, arenaModelId, setArenaModelId } = useChatStore();
-    const [proxyModels, setProxyModels] = useState<StoredProxyModel[]>([]);
-
-    useEffect(() => {
-        setProxyModels(getStoredProxyModels());
-    }, [isArenaMode]);
+    const { isArenaMode, setArenaMode, arenaModelId } = useChatStore();
+    // Removed local proxyModels state as it's now in the modal
 
     const handleCloseMenu = () => {
         setIsSettingsMenuOpen(false);
@@ -516,25 +639,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
     const headerClasses = isImmersive
         ? "p-3 bg-slate-900/60 backdrop-blur-md border-b border-white/10 flex items-center gap-4 relative z-10 transition-all duration-300 hover:bg-slate-900/80"
         : "p-3 border-b border-slate-700 flex items-center gap-4 relative z-10 bg-slate-800/80 backdrop-blur-md";
-
-    // --- ARENA MODEL SELECTION LOGIC (Option A) ---
-    // Only show models compatible with current source
-    const connection = getConnectionSettings();
-    let arenaModelOptions: { id: string, name: string }[] = [];
-
-    if (connection.source === 'gemini') {
-        arenaModelOptions = MODEL_OPTIONS;
-    } else if (connection.source === 'proxy') {
-        // Dedup proxy models + default options
-        const combined = [...proxyModels, ...PROXY_MODEL_OPTIONS];
-        const unique = new Map<string, {id: string, name: string}>();
-        combined.forEach(m => unique.set(m.id, m));
-        arenaModelOptions = Array.from(unique.values());
-    } else {
-         // Fallback for OpenRouter etc: Use Proxy Options list + Defaults as best guess
-         // Since fetching OR models is async in settings, we keep it simple here.
-         arenaModelOptions = PROXY_MODEL_OPTIONS;
-    }
 
     return (
         <div className={headerClasses}>
@@ -570,17 +674,20 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                              </button>
                              
                              {isArenaMode && (
-                                <select
-                                    value={arenaModelId || ''}
-                                    onChange={(e) => setArenaModelId(e.target.value)}
-                                    className="bg-transparent text-[10px] text-rose-300 font-medium outline-none max-w-[100px]"
-                                    title="Chọn Model Đối thủ (Cùng nguồn)"
-                                >
-                                    <option value="" className="bg-slate-800">Chọn Đối thủ</option>
-                                    {arenaModelOptions.map((m, idx) => (
-                                        <option key={`${m.id}-${idx}`} value={m.id} className="bg-slate-800">{m.name}</option>
-                                    ))}
-                                </select>
+                                <div className="relative">
+                                     <button
+                                        onClick={() => setIsArenaConfigOpen(!isArenaConfigOpen)}
+                                        className="text-[10px] text-rose-300 font-medium hover:text-white px-2 flex items-center gap-1 outline-none"
+                                        title="Cấu hình Đấu trường"
+                                     >
+                                        <span className="truncate max-w-[100px]">{arenaModelId || 'Chọn Model'}</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 opacity-70" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" /></svg>
+                                     </button>
+                                     <ArenaConfigModal 
+                                        isOpen={isArenaConfigOpen}
+                                        onClose={() => setIsArenaConfigOpen(false)}
+                                     />
+                                </div>
                              )}
                         </div>
 

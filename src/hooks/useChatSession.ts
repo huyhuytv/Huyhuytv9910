@@ -139,6 +139,7 @@ export const useChatSession = (sessionId: string | null) => {
                     // --- HYDRATE ARENA MODE ---
                     isArenaMode: session.isArenaMode || false,
                     arenaModelId: session.arenaModelId || null,
+                    arenaProfileId: session.arenaProfileId || null,
                 });
 
                 // Hydrate WI State
@@ -238,6 +239,7 @@ export const useChatSession = (sessionId: string | null) => {
                 // --- SAVE ARENA MODE ---
                 isArenaMode: state.isArenaMode,
                 arenaModelId: state.arenaModelId,
+                arenaProfileId: state.arenaProfileId,
                 // ----------------------
 
                 lastMessageSnippet: truncateText(lastMessageContent, 50),
