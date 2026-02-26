@@ -8,7 +8,7 @@ import { useLorebook } from '../../contexts/LorebookContext';
 import { useChatLogger } from '../useChatLogger';
 import { useWorldSystem } from '../useWorldSystem';
 import { MedusaService, syncDatabaseToLorebook, parseCustomActions, applyMedusaActions } from '../../services/medusaService'; 
-import { getApiKey, getGlobalContextSettings, getConnectionSettings, getProxyProfiles } from '../../services/settingsService';
+import { getApiKey, getGlobalContextSettings, getConnectionSettings } from '../../services/settingsService';
 import { useToast } from '../../components/ToastSystem';
 import type { WorldInfoEntry, InteractiveErrorState, ChatMessage } from '../../types';
 import { countTotalTurns } from '../useChatMemory';
@@ -279,13 +279,23 @@ export const useChatFlow = () => {
         const aiMsg = freshState.messages.find(m => m.id === messageId);
         if (!aiMsg || !aiMsg.arena) return;
 
-        // 1. Determine Model ID
+        // 1. Determine Model ID & Source
         const connection = getConnectionSettings();
-        const modelA_ID = connection.source === 'gemini' ? connection.gemini_model : 
-                          (connection.source === 'proxy' ? connection.proxy_model : connection.openrouter_model);
-        const modelB_ID = freshState.arenaModelId || 'gemini-2.5-flash-latest'; // Fallback if null
         
-        const targetModelId = slot === 'A' ? modelA_ID : modelB_ID;
+        let targetModelId = '';
+        let targetSource: 'gemini' | 'openrouter' | 'proxy' = connection.source;
+
+        if (slot === 'A') {
+            // Model A is always the "Main" model (Current Connection)
+            targetModelId = connection.source === 'gemini' ? connection.gemini_model : 
+                            (connection.source === 'proxy' ? connection.proxy_model : connection.openrouter_model);
+            targetSource = connection.source;
+        } else {
+            // Model B is the "Challenger" (Arena Settings)
+            targetModelId = freshState.arenaModelId || 'gemini-2.5-flash-latest';
+            targetSource = freshState.arenaProvider || 'gemini';
+        }
+        
         if (!targetModelId) {
             showToast('Không xác định được Model ID để thử lại.', 'error');
             return;
@@ -339,7 +349,8 @@ export const useChatFlow = () => {
 
             // 4. Stream Request
             let slotContent = "";
-            const stream = sendChatRequestStream(constructed.fullPrompt, freshState.preset!, ac.signal, targetModelId);
+            // Pass targetSource as overrideSource
+            const stream = sendChatRequestStream(constructed.fullPrompt, freshState.preset!, ac.signal, targetModelId, targetSource);
             
             for await (const chunk of stream) {
                 if (ac.signal.aborted) break;
@@ -533,11 +544,12 @@ export const useChatFlow = () => {
                     const modelA_ID = connection.source === 'gemini' ? connection.gemini_model : 
                                       (connection.source === 'proxy' ? connection.proxy_model : connection.openrouter_model);
                     const modelB_ID = freshState.arenaModelId;
+                    const modelB_Source = freshState.arenaProvider || 'gemini'; // NEW: Use Arena Provider
                     
-                    const runStream = async (modelId: string, slot: 'modelA' | 'modelB') => {
+                    const runStream = async (modelId: string, slot: 'modelA' | 'modelB', sourceOverride?: 'gemini' | 'openrouter' | 'proxy') => {
                         let slotContent = "";
                         try {
-                            const stream = sendChatRequestStream(fullPrompt, freshState.preset!, ac.signal, modelId);
+                            const stream = sendChatRequestStream(fullPrompt, freshState.preset!, ac.signal, modelId, sourceOverride);
                             for await (const chunk of stream) {
                                 if (ac.signal.aborted) break;
                                 slotContent += chunk;
@@ -576,8 +588,8 @@ export const useChatFlow = () => {
 
                     // Run both independently
                     await Promise.all([
-                        runStream(modelA_ID, 'modelA'),
-                        runStream(modelB_ID, 'modelB')
+                        runStream(modelA_ID, 'modelA', connection.source), // Model A uses Main Source
+                        runStream(modelB_ID, 'modelB', modelB_Source)      // Model B uses Arena Source
                     ]);
                     
                     playNotification('ai');

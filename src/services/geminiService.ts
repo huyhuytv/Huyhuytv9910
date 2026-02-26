@@ -19,17 +19,19 @@ const safetySettings = [
 export async function sendChatRequest(
     fullPrompt: string,
     settings: SillyTavernPreset,
-    overrideModel?: string,
-    proxyConfig?: { url: string, password?: string, isLegacy?: boolean } // NEW
+    overrideModel?: string, // New Parameter
+    overrideSource?: 'gemini' | 'openrouter' | 'proxy' // NEW: Override Source
 ): Promise<{ response: GenerateContentResponse }> {
     const connection = getConnectionSettings();
-    const source = proxyConfig ? 'proxy' : connection.source;
+    const source = overrideSource || connection.source;
 
     // Use override model if provided, else fall back to connection settings
+    // Note: If overrideSource is provided, we expect overrideModel to be provided too, or we might fallback to wrong defaults.
+    // But typically Arena provides both.
     const targetModel = overrideModel || (source === 'gemini' ? connection.gemini_model : (source === 'proxy' ? connection.proxy_model : connection.openrouter_model));
 
     if (source === 'proxy') {
-        const text = await callProxy(targetModel, fullPrompt, settings, proxyConfig);
+        const text = await callProxy(targetModel, fullPrompt, settings);
         return { response: { text } as GenerateContentResponse };
     }
 
@@ -52,59 +54,64 @@ export async function* sendChatRequestStream(
     settings: SillyTavernPreset,
     signal?: AbortSignal, // NEW: Abort Signal
     overrideModel?: string, // NEW: Specific model for Arena mode or testing
-    proxyConfig?: { url: string, password?: string, isLegacy?: boolean } // NEW
+    overrideSource?: 'gemini' | 'openrouter' | 'proxy' // NEW: Override Source
 ): AsyncGenerator<string, void, unknown> {
     const connection = getConnectionSettings();
-    const source = proxyConfig ? 'proxy' : connection.source;
+    const source = overrideSource || connection.source;
     
     // Determine Model ID: Override > Settings
     const targetModel = overrideModel || (source === 'gemini' ? connection.gemini_model : (source === 'proxy' ? connection.proxy_model : connection.openrouter_model));
 
     // 1. Handle Proxy Streaming
     if (source === 'proxy') {
-        const stream = callProxyStream(targetModel, fullPrompt, settings, signal, proxyConfig);
+        const stream = callProxyStream(targetModel, fullPrompt, settings, signal);
         for await (const chunk of stream) {
             yield chunk;
         }
         return;
     }
 
-    // 2. Handle Non-Gemini Sources (fallback for OpenRouter or others not implemented yet)
-    if (source !== 'gemini') {
+    // 2. Handle OpenRouter (via fallback or specific implementation if added later)
+    if (source === 'openrouter') {
         if (signal?.aborted) throw new Error("Aborted");
-        const result = await sendChatRequest(fullPrompt, settings, overrideModel);
+        // OpenRouter streaming not fully implemented in this simplified version, falling back to non-streaming or generic proxy logic if applicable.
+        // But wait, callOpenRouter is non-streaming. 
+        // If we want streaming for OpenRouter, we need callOpenRouterStream.
+        // For now, let's assume non-streaming fallback or generic handling.
+        // Actually, previous code had: if (source !== 'gemini') { ... }
+        // Let's keep that structure but respect source.
+        
+        const result = await sendChatRequest(fullPrompt, settings, overrideModel, source);
         yield result.response.text || "";
         return;
     }
 
     // 3. Handle Gemini Native Streaming
-    const ai = getGeminiClient();
-    const model = targetModel || 'gemini-3-pro-preview';
-    const payload = buildGeminiPayload(fullPrompt, settings, safetySettings);
+    if (source === 'gemini') {
+        const ai = getGeminiClient();
+        const model = targetModel || 'gemini-3-pro-preview';
+        const payload = buildGeminiPayload(fullPrompt, settings, safetySettings);
 
-    try {
-        const streamResponse = await ai.models.generateContentStream({
-            model,
-            contents: payload.contents,
-            config: payload.config,
-        });
+        try {
+            const streamResponse = await ai.models.generateContentStream({
+                model,
+                contents: payload.contents,
+                config: payload.config,
+            });
 
-        // Gemini SDK hiện tại chưa hỗ trợ trực tiếp signal trong generateContentStream ở level thấp,
-        // nhưng chúng ta có thể kiểm tra signal trong vòng lặp.
-        for await (const chunk of streamResponse) {
-            if (signal?.aborted) {
-                // User pressed stop
-                break; 
+            for await (const chunk of streamResponse) {
+                if (signal?.aborted) {
+                    break; 
+                }
+                yield chunk.text || "";
             }
-            yield chunk.text || "";
+        } catch (error) {
+            if (signal?.aborted) {
+                return;
+            }
+            console.error("Streaming Error:", error);
+            throw new Error("Lỗi luồng dữ liệu AI.");
         }
-    } catch (error) {
-        if (signal?.aborted) {
-            // Quietly exit if aborted
-            return;
-        }
-        console.error("Streaming Error:", error);
-        throw new Error("Lỗi luồng dữ liệu AI.");
     }
 }
 
