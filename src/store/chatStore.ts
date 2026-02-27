@@ -149,6 +149,94 @@ export const useChatStore = create<ChatState & ChatActions>()(
         abortController: null,
 
         setSessionData: (data) => set((state) => { Object.assign(state, data); }),
+        addMessage: (msg) => set((state) => { state.messages.push(msg); }),
+        updateMessage: (id, updates) => set((state) => {
+            const m = state.messages.find(msg => msg.id === id);
+            if (m) Object.assign(m, updates);
+        }),
+        setMessages: (messages) => set((state) => { state.messages = messages; }),
+        setVariables: (vars) => set((state) => { state.variables = vars; }),
+        
+        addSystemLog: (log) => set((state) => { 
+            state.logs.systemLog.unshift(log);
+            if (state.logs.systemLog.length > 200) state.logs.systemLog.pop();
+        }),
+        addLogTurn: (turn) => set((state) => { state.logs.turns.unshift(turn); }),
+        updateCurrentTurn: (updates) => set((state) => {
+            if (state.logs.turns.length > 0) {
+                Object.assign(state.logs.turns[0], updates);
+            }
+        }),
+        addWorldInfoLog: (log) => set((state) => { state.logs.worldInfoLog.unshift(log); }),
+        addSmartScanLog: (log) => set((state) => { state.logs.smartScanLog.unshift(log); }),
+        addMythicLog: (log) => set((state) => { state.logs.mythicLog.unshift(log); }),
+        addNetworkLog: (log) => set((state) => { 
+            // DEFENSIVE FIX: Ensure networkLog array exists (handle old session structure)
+            if (!state.logs.networkLog) {
+                state.logs.networkLog = [];
+            }
+            state.logs.networkLog.unshift(log); 
+            // Keep last 50 requests to avoid memory bloat
+            if (state.logs.networkLog.length > 50) state.logs.networkLog.pop();
+        }),
+        
+        setLongTermSummaries: (summaries) => set((state) => { state.longTermSummaries = summaries; }),
+        setSummaryQueue: (queue) => set((state) => { state.summaryQueue = queue; }),
+        setStoryQueue: (queue) => set((state) => { state.storyQueue = queue; }),
+        clearStoryQueue: () => set((state) => { state.storyQueue = []; }), // Implementation
+        setLastStateBlock: (block) => set((state) => { state.lastStateBlock = block; }),
+        
+        setIsInputLocked: (locked) => set((state) => { state.isInputLocked = locked; }),
+        setIsAutoLooping: (looping) => set((state) => { state.isAutoLooping = looping; }),
+        setQuickReplies: (replies) => set((state) => { state.quickReplies = replies; }),
+        setScriptButtons: (buttons) => set((state) => { state.scriptButtons = buttons; }),
+        
+        setRpgNotification: (content) => set((state) => { state.rpgNotification = content; }),
+        setGeneratedLorebookEntries: (entries) => set((state) => { state.generatedLorebookEntries = entries; }),
+        
+        setLoading: (loading) => set((state) => { state.isLoading = loading; }),
+        setError: (error) => set((state) => { state.error = error; }),
+        setAbortController: (ac) => set((state) => { state.abortController = ac; }),
+
+        setArenaMode: (enabled) => set((state) => { 
+            state.isArenaMode = enabled; 
+            saveArenaSettings({ 
+                enabled, 
+                provider: state.arenaProvider, 
+                modelId: state.arenaModelId, 
+                userProfileId: state.arenaUserProfileId 
+            });
+        }),
+        setArenaModelId: (modelId) => set((state) => { 
+            state.arenaModelId = modelId; 
+            saveArenaSettings({ 
+                enabled: state.isArenaMode, 
+                provider: state.arenaProvider, 
+                modelId, 
+                userProfileId: state.arenaUserProfileId 
+            });
+        }),
+        setArenaProvider: (provider) => set((state) => { 
+            state.arenaProvider = provider; 
+            saveArenaSettings({ 
+                enabled: state.isArenaMode, 
+                provider, 
+                modelId: state.arenaModelId, 
+                userProfileId: state.arenaUserProfileId 
+            });
+        }),
+        setArenaUserProfileId: (profileId) => set((state) => { 
+            state.arenaUserProfileId = profileId; 
+            saveArenaSettings({ 
+                enabled: state.isArenaMode, 
+                provider: state.arenaProvider, 
+                modelId: state.arenaModelId, 
+                userProfileId: profileId 
+            });
+        }),
+
+        clearLogs: () => set((state) => { state.logs = { turns: [], systemLog: [], worldInfoLog: [], smartScanLog: [], mythicLog: [], networkLog: [] }; }),
+        resetStore: () => set((state) => { Object.assign(state, initialState); state.abortController = null; }),
 
         updateRpgCell: (tableId, rowIndex, colIndex, value) => set((state) => {
             if (!state.card?.rpg_data) return;
