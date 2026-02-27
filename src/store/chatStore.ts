@@ -8,6 +8,7 @@ import type {
 } from '../types';
 // IMPORT SYNC LOGIC
 import { syncDatabaseToLorebook } from '../services/medusaService'; 
+import { getArenaSettings, saveArenaSettings } from '../services/settingsService';
 
 interface ChatState {
     sessionId: string | null;
@@ -124,6 +125,9 @@ interface ChatActions {
     reloadRpgConfig: (templateDb: RPGDatabase) => void;
 }
 
+// Initialize Arena Settings from LocalStorage
+const storedArena = getArenaSettings();
+
 const initialState: Omit<ChatState, 'abortController'> = {
     sessionId: null, card: null, preset: null, persona: null, mergedSettings: null,
     messages: [], variables: {}, extensionSettings: {}, worldInfoRuntime: {},
@@ -133,71 +137,18 @@ const initialState: Omit<ChatState, 'abortController'> = {
     visualState: {}, quickReplies: [], scriptButtons: [],
     logs: { turns: [], systemLog: [], worldInfoLog: [], smartScanLog: [], mythicLog: [], networkLog: [] },
     isLoading: false, isSummarizing: false, isInputLocked: false, isAutoLooping: false, error: null,
-    isArenaMode: false, arenaModelId: null, arenaProvider: null, arenaUserProfileId: null
+    isArenaMode: storedArena.enabled,
+    arenaModelId: storedArena.modelId,
+    arenaProvider: storedArena.provider,
+    arenaUserProfileId: storedArena.userProfileId
 };
 
 export const useChatStore = create<ChatState & ChatActions>()(
-    immer((set) => ({
+    immer((set, get) => ({
         ...initialState,
         abortController: null,
 
         setSessionData: (data) => set((state) => { Object.assign(state, data); }),
-        addMessage: (msg) => set((state) => { state.messages.push(msg); }),
-        updateMessage: (id, updates) => set((state) => {
-            const m = state.messages.find(msg => msg.id === id);
-            if (m) Object.assign(m, updates);
-        }),
-        setMessages: (messages) => set((state) => { state.messages = messages; }),
-        setVariables: (vars) => set((state) => { state.variables = vars; }),
-        
-        addSystemLog: (log) => set((state) => { 
-            state.logs.systemLog.unshift(log);
-            if (state.logs.systemLog.length > 200) state.logs.systemLog.pop();
-        }),
-        addLogTurn: (turn) => set((state) => { state.logs.turns.unshift(turn); }),
-        updateCurrentTurn: (updates) => set((state) => {
-            if (state.logs.turns.length > 0) {
-                Object.assign(state.logs.turns[0], updates);
-            }
-        }),
-        addWorldInfoLog: (log) => set((state) => { state.logs.worldInfoLog.unshift(log); }),
-        addSmartScanLog: (log) => set((state) => { state.logs.smartScanLog.unshift(log); }),
-        addMythicLog: (log) => set((state) => { state.logs.mythicLog.unshift(log); }),
-        addNetworkLog: (log) => set((state) => { 
-            // DEFENSIVE FIX: Ensure networkLog array exists (handle old session structure)
-            if (!state.logs.networkLog) {
-                state.logs.networkLog = [];
-            }
-            state.logs.networkLog.unshift(log); 
-            // Keep last 50 requests to avoid memory bloat
-            if (state.logs.networkLog.length > 50) state.logs.networkLog.pop();
-        }),
-        
-        setLongTermSummaries: (summaries) => set((state) => { state.longTermSummaries = summaries; }),
-        setSummaryQueue: (queue) => set((state) => { state.summaryQueue = queue; }),
-        setStoryQueue: (queue) => set((state) => { state.storyQueue = queue; }),
-        clearStoryQueue: () => set((state) => { state.storyQueue = []; }), // Implementation
-        setLastStateBlock: (block) => set((state) => { state.lastStateBlock = block; }),
-        
-        setIsInputLocked: (locked) => set((state) => { state.isInputLocked = locked; }),
-        setIsAutoLooping: (looping) => set((state) => { state.isAutoLooping = looping; }),
-        setQuickReplies: (replies) => set((state) => { state.quickReplies = replies; }),
-        setScriptButtons: (buttons) => set((state) => { state.scriptButtons = buttons; }),
-        
-        setRpgNotification: (content) => set((state) => { state.rpgNotification = content; }),
-        setGeneratedLorebookEntries: (entries) => set((state) => { state.generatedLorebookEntries = entries; }),
-        
-        setLoading: (loading) => set((state) => { state.isLoading = loading; }),
-        setError: (error) => set((state) => { state.error = error; }),
-        setAbortController: (ac) => set((state) => { state.abortController = ac; }),
-
-        setArenaMode: (enabled) => set((state) => { state.isArenaMode = enabled; }),
-        setArenaModelId: (modelId) => set((state) => { state.arenaModelId = modelId; }),
-        setArenaProvider: (provider) => set((state) => { state.arenaProvider = provider; }),
-        setArenaUserProfileId: (profileId) => set((state) => { state.arenaUserProfileId = profileId; }),
-
-        clearLogs: () => set((state) => { state.logs = { turns: [], systemLog: [], worldInfoLog: [], smartScanLog: [], mythicLog: [], networkLog: [] }; }),
-        resetStore: () => set((state) => { Object.assign(state, initialState); state.abortController = null; }),
 
         updateRpgCell: (tableId, rowIndex, colIndex, value) => set((state) => {
             if (!state.card?.rpg_data) return;
