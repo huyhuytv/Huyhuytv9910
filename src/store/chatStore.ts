@@ -8,7 +8,6 @@ import type {
 } from '../types';
 // IMPORT SYNC LOGIC
 import { syncDatabaseToLorebook } from '../services/medusaService'; 
-import { getArenaSettings, saveArenaSettings } from '../services/settingsService';
 
 interface ChatState {
     sessionId: string | null;
@@ -125,9 +124,6 @@ interface ChatActions {
     reloadRpgConfig: (templateDb: RPGDatabase) => void;
 }
 
-// Initialize Arena Settings from LocalStorage
-const storedArena = getArenaSettings();
-
 const initialState: Omit<ChatState, 'abortController'> = {
     sessionId: null, card: null, preset: null, persona: null, mergedSettings: null,
     messages: [], variables: {}, extensionSettings: {}, worldInfoRuntime: {},
@@ -137,14 +133,11 @@ const initialState: Omit<ChatState, 'abortController'> = {
     visualState: {}, quickReplies: [], scriptButtons: [],
     logs: { turns: [], systemLog: [], worldInfoLog: [], smartScanLog: [], mythicLog: [], networkLog: [] },
     isLoading: false, isSummarizing: false, isInputLocked: false, isAutoLooping: false, error: null,
-    isArenaMode: storedArena.enabled,
-    arenaModelId: storedArena.modelId,
-    arenaProvider: storedArena.provider,
-    arenaUserProfileId: storedArena.userProfileId
+    isArenaMode: false, arenaModelId: null, arenaProvider: null, arenaUserProfileId: null
 };
 
 export const useChatStore = create<ChatState & ChatActions>()(
-    immer((set, get) => ({
+    immer((set) => ({
         ...initialState,
         abortController: null,
 
@@ -198,42 +191,10 @@ export const useChatStore = create<ChatState & ChatActions>()(
         setError: (error) => set((state) => { state.error = error; }),
         setAbortController: (ac) => set((state) => { state.abortController = ac; }),
 
-        setArenaMode: (enabled) => set((state) => { 
-            state.isArenaMode = enabled; 
-            saveArenaSettings({ 
-                enabled, 
-                provider: state.arenaProvider, 
-                modelId: state.arenaModelId, 
-                userProfileId: state.arenaUserProfileId 
-            });
-        }),
-        setArenaModelId: (modelId) => set((state) => { 
-            state.arenaModelId = modelId; 
-            saveArenaSettings({ 
-                enabled: state.isArenaMode, 
-                provider: state.arenaProvider, 
-                modelId, 
-                userProfileId: state.arenaUserProfileId 
-            });
-        }),
-        setArenaProvider: (provider) => set((state) => { 
-            state.arenaProvider = provider; 
-            saveArenaSettings({ 
-                enabled: state.isArenaMode, 
-                provider, 
-                modelId: state.arenaModelId, 
-                userProfileId: state.arenaUserProfileId 
-            });
-        }),
-        setArenaUserProfileId: (profileId) => set((state) => { 
-            state.arenaUserProfileId = profileId; 
-            saveArenaSettings({ 
-                enabled: state.isArenaMode, 
-                provider: state.arenaProvider, 
-                modelId: state.arenaModelId, 
-                userProfileId: profileId 
-            });
-        }),
+        setArenaMode: (enabled) => set((state) => { state.isArenaMode = enabled; }),
+        setArenaModelId: (modelId) => set((state) => { state.arenaModelId = modelId; }),
+        setArenaProvider: (provider) => set((state) => { state.arenaProvider = provider; }),
+        setArenaUserProfileId: (profileId) => set((state) => { state.arenaUserProfileId = profileId; }),
 
         clearLogs: () => set((state) => { state.logs = { turns: [], systemLog: [], worldInfoLog: [], smartScanLog: [], mythicLog: [], networkLog: [] }; }),
         resetStore: () => set((state) => { Object.assign(state, initialState); state.abortController = null; }),

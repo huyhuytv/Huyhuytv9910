@@ -485,8 +485,7 @@ export const getAllLocalStorageData = (): Record<string, any> => {
         OPENROUTER_API_KEY_KEY, PROXY_URL_KEY, PROXY_PASSWORD_KEY, 
         PROXY_LEGACY_MODE_KEY, PROXY_FOR_TOOLS_KEY, GLOBAL_CONNECTION_KEY,
         GLOBAL_SMART_SCAN_KEY, GLOBAL_CONTEXT_KEY, GLOBAL_TTS_KEY,
-        PROXY_PROFILES_KEY, PROXY_MODELS_KEY, // Added models for backup
-        ARENA_SETTINGS_KEY // NEW
+        PROXY_PROFILES_KEY, PROXY_MODELS_KEY // Added models for backup
     ];
     
     keys.forEach(key => {
@@ -507,30 +506,3 @@ export const restoreLocalStorageData = (data: Record<string, any>): void => {
         }
     });
 };
-
-// --- ARENA SETTINGS (NEW) ---
-const ARENA_SETTINGS_KEY = 'sillyTavernStudio_arenaSettings';
-
-export interface ArenaSettings {
-    enabled: boolean;
-    provider: 'gemini' | 'openrouter' | 'proxy' | null;
-    modelId: string | null;
-    userProfileId: string | null;
-}
-
-export const getArenaSettings = (): ArenaSettings => {
-    try {
-        const stored = localStorage.getItem(ARENA_SETTINGS_KEY);
-        if (stored) {
-            return JSON.parse(stored);
-        }
-    } catch (e) {
-        console.error("Failed to load arena settings", e);
-    }
-    return { enabled: false, provider: null, modelId: null, userProfileId: null };
-};
-
-export const saveArenaSettings = (settings: ArenaSettings): void => {
-    localStorage.setItem(ARENA_SETTINGS_KEY, JSON.stringify(settings));
-};
-// -----------------------------------
