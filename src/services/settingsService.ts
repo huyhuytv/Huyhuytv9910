@@ -9,6 +9,7 @@ const PROXY_LEGACY_MODE_KEY = 'sillyTavernStudio_proxyLegacyMode';
 const PROXY_FOR_TOOLS_KEY = 'sillyTavernStudio_proxyForTools';
 const PROXY_PROFILES_KEY = 'sillyTavernStudio_proxyProfiles';
 const PROXY_MODELS_KEY = 'sillyTavernStudio_proxyModels'; // NEW KEY
+const ACTIVE_PROXY_PROFILE_KEY = 'sillyTavernStudio_activeProxyProfile'; // NEW KEY
 const GLOBAL_CONNECTION_KEY = 'sillyTavernStudio_globalConnection';
 const GLOBAL_SMART_SCAN_KEY = 'sillyTavernStudio_smartScanGlobal';
 const GLOBAL_CONTEXT_KEY = 'sillyTavernStudio_globalContext';
@@ -368,6 +369,15 @@ export const getStoredProxyModels = (): StoredProxyModel[] => {
 
 export const saveStoredProxyModels = (models: StoredProxyModel[]): void => {
     localStorage.setItem(PROXY_MODELS_KEY, JSON.stringify(models));
+};
+
+// --- ACTIVE PROXY PROFILE (NEW) ---
+export const getActiveProxyProfileId = (): string => {
+    return localStorage.getItem(ACTIVE_PROXY_PROFILE_KEY) || '';
+};
+
+export const saveActiveProxyProfileId = (id: string): void => {
+    localStorage.setItem(ACTIVE_PROXY_PROFILE_KEY, id);
 };
 // -----------------------------------
 
