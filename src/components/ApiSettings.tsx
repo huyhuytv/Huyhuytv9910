@@ -21,8 +21,6 @@ import {
     saveProxyProfiles,
     getStoredProxyModels,
     saveStoredProxyModels,
-    getActiveProxyProfileId, // NEW
-    saveActiveProxyProfileId, // NEW
     GlobalConnectionSettings,
     CompletionSource,
     ProxyProtocol,
@@ -134,7 +132,6 @@ export const ApiSettings: React.FC = () => {
         
         setOpenRouterApiKey(getOpenRouterApiKey());
         
-        // Load Global Settings First
         setProxyUrl(getProxyUrl());
         setProxyPassword(getProxyPassword());
         setProxyLegacyMode(getProxyLegacyMode());
@@ -142,31 +139,7 @@ export const ApiSettings: React.FC = () => {
         setProxyModelList(getStoredProxyModels());
         
         setConnection(getConnectionSettings());
-        
-        // Load Profiles and Active Profile
-        const storedProfiles = getProxyProfiles();
-        setProfiles(storedProfiles);
-        
-        const storedActiveProfileId = getActiveProxyProfileId();
-        if (storedActiveProfileId) {
-            const profile = storedProfiles.find(p => p.id === storedActiveProfileId);
-            if (profile) {
-                setActiveProfileId(storedActiveProfileId);
-                // Apply profile settings immediately to UI state
-                setProxyUrl(profile.url);
-                setProxyPassword(profile.password);
-                setProxyLegacyMode(profile.legacyMode);
-                setProxyForTools(profile.proxyForTools);
-                
-                // Apply to Connection State (Visual Only until saved)
-                setConnection(prev => ({
-                    ...prev,
-                    proxy_protocol: profile.protocol,
-                    proxy_model: profile.chatModel,
-                    proxy_tool_model: profile.toolModel
-                }));
-            }
-        }
+        setProfiles(getProxyProfiles());
     }, []);
 
     // Helper to update connection state
@@ -193,9 +166,6 @@ export const ApiSettings: React.FC = () => {
             saveProxyLegacyMode(proxyLegacyMode);
             saveProxyForTools(proxyForTools);
             saveStoredProxyModels(proxyModelList); // Save loaded models
-            
-            // 5. Save Active Profile Selection
-            saveActiveProxyProfileId(activeProfileId);
 
             setSaveStatus('saved');
             setTimeout(() => setSaveStatus('idle'), 2000);
@@ -205,30 +175,113 @@ export const ApiSettings: React.FC = () => {
         }
     };
 
-    // ... (OpenRouter Logic remains same) ...
+    // OpenRouter Logic
+    const handleValidateORKey = async () => {
+        if (!openRouterApiKey) return;
+        setIsValidatingOR(true);
+        setOrValidationStatus('idle');
+        try {
+            await validateOpenRouterKey(openRouterApiKey);
+            setOrValidationStatus('success');
+            // Auto fetch models on success
+            if (openRouterModels.length === 0) fetchOpenRouterModels();
+        } catch (error) {
+            setOrValidationStatus('error');
+        } finally {
+            setIsValidatingOR(false);
+        }
+    };
+
+    const fetchOpenRouterModels = async () => {
+        setIsFetchingORModels(true);
+        setOrModelError(null);
+        try {
+            const models = await getOpenRouterModels();
+            setOpenRouterModels(models);
+        } catch (e) {
+            setOrModelError(e instanceof Error ? e.message : 'Error loading models');
+        } finally {
+            setIsFetchingORModels(false);
+        }
+    };
+
+    const filteredORModels = useMemo(() => {
+        if (!showFreeOR) return openRouterModels;
+        return openRouterModels.filter(m => m.pricing.prompt === '0' && m.pricing.completion === '0');
+    }, [openRouterModels, showFreeOR]);
+
+    // Proxy Ping Logic
+    const handlePingProxy = async () => {
+        if (!proxyUrl) return;
+        setIsPingingProxy(true);
+        setProxyPingStatus('idle');
+        setProxyErrorMessage('');
+        
+        try {
+            const cleanUrl = proxyUrl.trim().replace(/\/$/, '');
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 5000); 
+            
+            const reqOptions: RequestInit = {
+                method: 'GET',
+                signal: controller.signal,
+            };
+
+            // Basic headers
+            const headers: Record<string, string> = {};
+            if (!proxyLegacyMode) {
+                headers['Content-Type'] = 'application/json';
+                if (proxyPassword) {
+                    headers['Authorization'] = `Bearer ${proxyPassword}`;
+                }
+            }
+            reqOptions.headers = headers;
+            if (proxyLegacyMode) reqOptions.mode = 'no-cors';
+
+            // Try pinging a standard endpoint
+            await fetch(`${cleanUrl}/v1/models`, reqOptions);
+            
+            clearTimeout(timeoutId);
+            setProxyPingStatus('success');
+        } catch (error: any) {
+            if (error.name === 'AbortError') {
+                setProxyErrorMessage("Timeout.");
+            } else if (error.message.includes('Failed to fetch')) {
+                setProxyErrorMessage("Lỗi kết nối / CORS.");
+            } else {
+                setProxyErrorMessage(error.message);
+            }
+            setProxyPingStatus('error');
+        } finally {
+            setIsPingingProxy(false);
+        }
+    };
+
+    // Load Models from Proxy
+    const handleLoadProxyModels = async () => {
+        if (!proxyUrl) {
+            showToast("Vui lòng nhập Proxy URL.", "warning");
+            return;
+        }
+        
+        setIsLoadingModels(true);
+        try {
+            const models = await fetchProxyModels(proxyUrl, proxyPassword, proxyLegacyMode);
+            setProxyModelList(models);
+            saveStoredProxyModels(models); // Auto save
+            showToast(`Đã tải ${models.length} models từ Proxy.`, "success");
+        } catch (e: any) {
+            console.error(e);
+            showToast(`Lỗi tải models: ${e.message}`, "error");
+        } finally {
+            setIsLoadingModels(false);
+        }
+    };
 
     // --- PROXY PROFILE LOGIC ---
 
     const handleProfileChange = async (profileId: string) => {
         setActiveProfileId(profileId);
-        saveActiveProxyProfileId(profileId); // Auto-save selection
-        
-        if (!profileId) {
-            // Revert to Global Settings if deselected
-            setProxyUrl(getProxyUrl());
-            setProxyPassword(getProxyPassword());
-            setProxyLegacyMode(getProxyLegacyMode());
-            setProxyForTools(getProxyForTools());
-            const globalConn = getConnectionSettings();
-            setConnection(prev => ({
-                ...prev,
-                proxy_protocol: globalConn.proxy_protocol,
-                proxy_model: globalConn.proxy_model,
-                proxy_tool_model: globalConn.proxy_tool_model
-            }));
-            return;
-        }
-
         const profile = profiles.find(p => p.id === profileId);
         if (profile) {
             // Apply settings to UI state
@@ -255,6 +308,8 @@ export const ApiSettings: React.FC = () => {
                     const models = await fetchProxyModels(profile.url, profile.password, profile.legacyMode);
                     setProxyModelList(models);
                     saveStoredProxyModels(models);
+                    // Optional: Notification for auto-fetch success
+                    // showToast(`Đã cập nhật danh sách model (${models.length})`, 'success');
                 } catch (e: any) {
                     console.error("Auto-fetch error:", e);
                     showToast(`Không thể tự động tải danh sách model: ${e.message}`, 'warning');
