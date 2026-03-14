@@ -9,6 +9,7 @@ const PROXY_LEGACY_MODE_KEY = 'sillyTavernStudio_proxyLegacyMode';
 const PROXY_FOR_TOOLS_KEY = 'sillyTavernStudio_proxyForTools';
 const PROXY_PROFILES_KEY = 'sillyTavernStudio_proxyProfiles';
 const PROXY_MODELS_KEY = 'sillyTavernStudio_proxyModels'; // NEW KEY
+const ACTIVE_PROXY_PROFILE_KEY = 'sillyTavernStudio_activeProxyProfile'; // NEW KEY
 const GLOBAL_CONNECTION_KEY = 'sillyTavernStudio_globalConnection';
 const GLOBAL_SMART_SCAN_KEY = 'sillyTavernStudio_smartScanGlobal';
 const GLOBAL_CONTEXT_KEY = 'sillyTavernStudio_globalContext';
@@ -369,6 +370,15 @@ export const getStoredProxyModels = (): StoredProxyModel[] => {
 export const saveStoredProxyModels = (models: StoredProxyModel[]): void => {
     localStorage.setItem(PROXY_MODELS_KEY, JSON.stringify(models));
 };
+
+// --- ACTIVE PROXY PROFILE (NEW) ---
+export const getActiveProxyProfileId = (): string => {
+    return localStorage.getItem(ACTIVE_PROXY_PROFILE_KEY) || '';
+};
+
+export const saveActiveProxyProfileId = (id: string): void => {
+    localStorage.setItem(ACTIVE_PROXY_PROFILE_KEY, id);
+};
 // -----------------------------------
 
 export const getActiveModel = (): string => {
@@ -485,8 +495,7 @@ export const getAllLocalStorageData = (): Record<string, any> => {
         OPENROUTER_API_KEY_KEY, PROXY_URL_KEY, PROXY_PASSWORD_KEY, 
         PROXY_LEGACY_MODE_KEY, PROXY_FOR_TOOLS_KEY, GLOBAL_CONNECTION_KEY,
         GLOBAL_SMART_SCAN_KEY, GLOBAL_CONTEXT_KEY, GLOBAL_TTS_KEY,
-        PROXY_PROFILES_KEY, PROXY_MODELS_KEY, // Added models for backup
-        ARENA_SETTINGS_KEY // NEW
+        PROXY_PROFILES_KEY, PROXY_MODELS_KEY // Added models for backup
     ];
     
     keys.forEach(key => {
@@ -507,30 +516,3 @@ export const restoreLocalStorageData = (data: Record<string, any>): void => {
         }
     });
 };
-
-// --- ARENA SETTINGS (NEW) ---
-const ARENA_SETTINGS_KEY = 'sillyTavernStudio_arenaSettings';
-
-export interface ArenaSettings {
-    enabled: boolean;
-    provider: 'gemini' | 'openrouter' | 'proxy' | null;
-    modelId: string | null;
-    userProfileId: string | null;
-}
-
-export const getArenaSettings = (): ArenaSettings => {
-    try {
-        const stored = localStorage.getItem(ARENA_SETTINGS_KEY);
-        if (stored) {
-            return JSON.parse(stored);
-        }
-    } catch (e) {
-        console.error("Failed to load arena settings", e);
-    }
-    return { enabled: false, provider: null, modelId: null, userProfileId: null };
-};
-
-export const saveArenaSettings = (settings: ArenaSettings): void => {
-    localStorage.setItem(ARENA_SETTINGS_KEY, JSON.stringify(settings));
-};
-// -----------------------------------

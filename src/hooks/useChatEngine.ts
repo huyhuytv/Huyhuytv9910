@@ -18,7 +18,7 @@ export const useChatEngine = (sessionId: string | null) => {
     const store = useChatStore();
     const logger = useChatLogger();
     const { lorebooks } = useLorebook(); 
-    const { saveSession, changePreset } = useChatSession(sessionId);
+    const { saveSession, changePreset, changePersona } = useChatSession(sessionId);
     
     // sendMessage now supports forcedContent for Story Mode
     // Exposed handleArenaSelection for Arena Mode
@@ -195,6 +195,7 @@ export const useChatEngine = (sessionId: string | null) => {
         editMessage,
         saveSession,
         changePreset,
+        changePersona,
         triggerSmartContext,
         handleRegenerateSummary,
         handleRetryFailedTask,

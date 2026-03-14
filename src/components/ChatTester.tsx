@@ -3,7 +3,6 @@ import React, { useRef, useMemo, useEffect } from 'react';
 import { useChatEngine } from '../hooks/useChatEngine';
 import { useChatUI } from '../hooks/useChatUI'; // NEW Hook
 import { useCharacter } from '../contexts/CharacterContext';
-import { useUserPersona } from '../contexts/UserPersonaContext';
 import { useLorebook } from '../contexts/LorebookContext';
 import { ChatHeader } from './Chat/ChatHeader';
 import { MessageList } from './Chat/MessageList';
@@ -32,7 +31,6 @@ export const ChatTester: React.FC<ChatTesterProps> = ({ sessionId, onBack }) => 
 
     // 3. Context Data
     const { characters } = useCharacter();
-    const { activePersona } = useUserPersona();
     const { lorebooks } = useLorebook();
 
     const iframeRefs = useRef<Record<string, HTMLIFrameElement | null>>({});
@@ -143,6 +141,9 @@ export const ChatTester: React.FC<ChatTesterProps> = ({ sessionId, onBack }) => 
                 activePresetName={engine.preset.name}
                 onPresetChange={engine.changePreset}
                 
+                activePersonaId={engine.persona?.id}
+                onPersonaChange={engine.changePersona}
+                
                 onToggleAssistant={ui.toggleAssistant}
                 isAssistantOpen={ui.isAssistantOpen}
                 
@@ -157,7 +158,7 @@ export const ChatTester: React.FC<ChatTesterProps> = ({ sessionId, onBack }) => 
                 isImmersive={ui.isImmersive}
                 characterName={engine.card.name}
                 characterAvatarUrl={characterAvatarUrl}
-                userPersonaName={activePersona?.name || 'User'}
+                userPersonaName={engine.persona?.name || 'User'}
                 characterId={sessionId}
                 sessionId={sessionId}
                 
@@ -248,7 +249,7 @@ export const ChatTester: React.FC<ChatTesterProps> = ({ sessionId, onBack }) => 
                     logs: engine.logs,
                     lastInteractiveMsg,
                     characterAvatarUrl,
-                    userPersonaName: activePersona?.name || 'User',
+                    userPersonaName: engine.persona?.name || 'User',
                     sessionId,
                     extensionSettings: engine.extensionSettings,
                     interactiveError: engine.interactiveError,

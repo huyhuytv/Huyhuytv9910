@@ -98,6 +98,7 @@ export interface ChatSession {
     // --- ARENA MODE STATE (NEW) ---
     isArenaMode?: boolean;
     arenaModelId?: string | null;
+    arenaProvider?: 'gemini' | 'openrouter' | 'proxy' | null;
     arenaProfileId?: string | null;
     // -----------------------------
 

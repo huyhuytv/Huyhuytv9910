@@ -16,6 +16,7 @@ import { fetchProxyModels } from '../../services/api/proxyApi';
 import type { OpenRouterModel } from '../../types';
 import { Loader } from '../Loader';
 import { useToast } from '../ToastSystem';
+import { useGeminiModels } from '../../hooks/useGeminiModels';
 
 interface ArenaSettingsModalProps {
     isOpen: boolean;

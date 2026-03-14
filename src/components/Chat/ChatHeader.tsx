@@ -16,6 +16,7 @@ import {
 } from '../../services/settingsService';
 import { ToggleInput } from '../ui/ToggleInput';
 
+import { useUserPersona } from '../../contexts/UserPersonaContext';
 import { ArenaSettingsModal } from './ArenaSettingsModal';
 
 interface ChatHeaderProps {
@@ -31,6 +32,8 @@ interface ChatHeaderProps {
     isStatusHUDOpen?: boolean;
     activePresetName?: string;
     onPresetChange?: (presetName: string) => void;
+    activePersonaId?: string;
+    onPersonaChange?: (personaId: string) => void;
     onToggleAssistant?: () => void;
     isAssistantOpen?: boolean;
     onToggleRpgDashboard?: () => void;
@@ -226,10 +229,13 @@ const QuickConfigModal: React.FC<{
     onClose: () => void;
     activePresetName?: string;
     onPresetChange?: (name: string) => void;
+    activePersonaId?: string;
+    onPersonaChange?: (id: string) => void;
     // Data for live tuning connection
     onConnectionChange: () => void; // Trigger parent refresh
-}> = ({ isOpen, onClose, activePresetName, onPresetChange, onConnectionChange }) => {
+}> = ({ isOpen, onClose, activePresetName, onPresetChange, activePersonaId, onPersonaChange, onConnectionChange }) => {
     const { presets } = usePreset();
+    const { personas } = useUserPersona();
     const modalRef = useRef<HTMLDivElement>(null);
     const [conn, setConn] = useState<GlobalConnectionSettings>(getConnectionSettings());
     const [proxyModels, setProxyModels] = useState<StoredProxyModel[]>([]);
@@ -335,6 +341,30 @@ const QuickConfigModal: React.FC<{
                             </select>
                         )}
                     </div>
+                </div>
+
+                <div className="h-px bg-slate-700/50"></div>
+                
+                {/* SECTION 1.5: PERSONA LIST */}
+                <div className="space-y-1">
+                     <label className="text-[10px] font-bold text-emerald-400 uppercase mb-2 block">Persona (Hồ sơ)</label>
+                     <div className="max-h-40 overflow-y-auto custom-scrollbar space-y-1 pr-1">
+                        {personas.map(persona => (
+                            <button
+                                key={persona.id}
+                                onClick={() => { if(onPersonaChange) onPersonaChange(persona.id); onClose(); }}
+                                className={`w-full text-left px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-between ${
+                                    activePersonaId === persona.id 
+                                    ? 'bg-emerald-900/30 text-emerald-100 border border-emerald-500/30' 
+                                    : 'text-slate-400 hover:bg-slate-700 hover:text-white border border-transparent'
+                                }`}
+                                aria-label={`Chọn hồ sơ ${persona.name}`}
+                            >
+                                <span className="truncate">{persona.name}</span>
+                                {activePersonaId === persona.id && <span className="text-[8px] text-emerald-400">●</span>}
+                            </button>
+                        ))}
+                     </div>
                 </div>
 
                 <div className="h-px bg-slate-700/50"></div>
@@ -490,7 +520,7 @@ const UnifiedConfigBadge: React.FC<{
 export const ChatHeader: React.FC<ChatHeaderProps> = ({ 
     characterName, onBack, isImmersive, setIsImmersive, visualState, onVisualUpdate, 
     onToggleHUD, isHUDOpen, onToggleStatusHUD, isStatusHUDOpen,
-    activePresetName, onPresetChange, onToggleAssistant, isAssistantOpen,
+    activePresetName, onPresetChange, activePersonaId, onPersonaChange, onToggleAssistant, isAssistantOpen,
     onToggleRpgDashboard, isRpgDashboardOpen, hasRpgData
 }) => {
     const [isSettingsMenuOpen, setIsSettingsMenuOpen] = useState(false);
@@ -576,6 +606,8 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
                                 onClose={() => setIsConfigMenuOpen(false)}
                                 activePresetName={activePresetName}
                                 onPresetChange={onPresetChange}
+                                activePersonaId={activePersonaId}
+                                onPersonaChange={onPersonaChange}
                                 onConnectionChange={handleConnectionChange}
                             />
                          </div>

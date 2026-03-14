@@ -139,7 +139,8 @@ export const useChatSession = (sessionId: string | null) => {
                     // --- HYDRATE ARENA MODE ---
                     isArenaMode: session.isArenaMode || false,
                     arenaModelId: session.arenaModelId || null,
-                    arenaProfileId: session.arenaProfileId || null,
+                    arenaProvider: session.arenaProvider || null,
+                    arenaUserProfileId: session.arenaProfileId || null,
                 });
 
                 // Hydrate WI State
@@ -239,7 +240,8 @@ export const useChatSession = (sessionId: string | null) => {
                 // --- SAVE ARENA MODE ---
                 isArenaMode: state.isArenaMode,
                 arenaModelId: state.arenaModelId,
-                arenaProfileId: state.arenaProfileId,
+                arenaProvider: state.arenaProvider,
+                arenaProfileId: state.arenaUserProfileId,
                 // ----------------------
 
                 lastMessageSnippet: truncateText(lastMessageContent, 50),
@@ -297,8 +299,28 @@ export const useChatSession = (sessionId: string | null) => {
         console.log(`[Session] Live Tuned to preset: ${newPreset.name}`);
     }, [presets, setSessionData]);
 
+    const changePersona = useCallback(async (personaId: string) => {
+        const newPersona = personas.find(p => p.id === personaId);
+        if (!newPersona) return;
+
+        setSessionData({
+            persona: newPersona
+        });
+        
+        // Save to DB immediately
+        const state = useChatStore.getState();
+        if (state.sessionId) {
+            const session = await dbService.getChatSession(state.sessionId);
+            if (session) {
+                session.userPersonaId = personaId;
+                await dbService.saveChatSession(session);
+            }
+        }
+    }, [personas, setSessionData]);
+
     return {
         saveSession,
-        changePreset
+        changePreset,
+        changePersona
     };
 };

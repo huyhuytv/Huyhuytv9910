@@ -36,6 +36,8 @@ import { SelectInput } from './ui/SelectInput';
 import { LabeledInput } from './ui/LabeledInput';
 import { useToast } from './ToastSystem';
 
+import { useGeminiModels } from '../hooks/useGeminiModels';
+
 // New Reusable Component for Model Selection with "Other" option
 const ModelSelectorWithCustom: React.FC<{
     label: string;
@@ -123,6 +125,9 @@ export const ApiSettings: React.FC = () => {
     const [saveStatus, setSaveStatus] = useState<'idle' | 'saved' | 'error'>('idle');
     const [isValidatingOR, setIsValidatingOR] = useState(false);
     const [orValidationStatus, setOrValidationStatus] = useState<'idle' | 'success' | 'error'>('idle');
+
+    // Fetch Gemini Models dynamically
+    const { models: geminiModels } = useGeminiModels(MODEL_OPTIONS);
 
     // Load Initial Data
     useEffect(() => {
@@ -444,7 +449,12 @@ export const ApiSettings: React.FC = () => {
     );
 
     // Determine which list to use: Fetched or Default
-    const effectiveProxyModels = proxyModelList.length > 0 ? proxyModelList : PROXY_MODEL_OPTIONS;
+    const effectiveProxyModels = proxyModelList.length > 0 ? proxyModelList : [
+        ...geminiModels,
+        { id: 'claude-opus-4.5', name: 'Claude Opus 4.5' },
+        { id: 'claude-3-5-sonnet-latest', name: 'Claude 3.5 Sonnet' },
+        { id: 'gpt-4o', name: 'GPT-4o' }
+    ];
 
     return (
         <div className="bg-slate-800/50 p-6 rounded-xl shadow-lg max-w-3xl mx-auto space-y-8">
@@ -472,7 +482,7 @@ export const ApiSettings: React.FC = () => {
                             <SelectInput
                                 value={connection.gemini_model}
                                 onChange={(e) => updateConnection('gemini_model', e.target.value)}
-                                options={MODEL_OPTIONS.map(m => ({ value: m.id, label: m.name }))}
+                                options={geminiModels.map(m => ({ value: m.id, label: m.name }))}
                             />
                         </div>
 
