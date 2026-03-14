@@ -1,7 +1,7 @@
 
 import { useCallback, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
-import { summarizeHistory } from '../services/ai/semanticTasks.ts';
+import { summarizeHistory } from '../services/ai/semanticTasks';
 import { dispatchSystemLog } from '../services/logBridge';
 import { ChatMessage } from '../types';
 import { getGlobalContextSettings } from '../services/settingsService';

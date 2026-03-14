@@ -708,10 +708,10 @@ export async function constructChatPrompt(
                 return typeof val === 'object' ? JSON.stringify(val) : String(val);
             })
             .replace(/{{all_definitions}}/g, allDefinitions)
-            .replace(/{{description}}/g, card.description)
-            .replace(/{{personality}}/g, card.personality)
-            .replace(/{{scenario}}/g, card.scenario)
-            .replace(/{{mes_example}}/g, card.mes_example);
+            .replace(/{{description}}/g, card.description || '')
+            .replace(/{{personality}}/g, card.personality || '')
+            .replace(/{{scenario}}/g, card.scenario || '')
+            .replace(/{{mes_example}}/g, card.mes_example || '');
 
         // Run EJS with updated variables containing User Name
         const ejsVars = { ...variables, user: userPersonaName };

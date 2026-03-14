@@ -33,7 +33,7 @@ export class GlobalErrorBoundary extends React.Component<GlobalErrorBoundaryProp
             'error',
             'system',
             `React Render Crash: ${error.message}`,
-            errorInfo.componentStack
+            errorInfo.componentStack || undefined
         );
     } catch (e) {
         // Dự phòng nếu hệ thống log gặp lỗi

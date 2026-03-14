@@ -67,7 +67,7 @@ export const useResponseHandler = () => {
         // 3. Cập nhật tin nhắn trong Store
         updateMessage(messageId, {
             content: displayContent,
-            interactiveHtml,
+            interactiveHtml: interactiveHtml || undefined,
             originalRawContent: rawText,
             contextState: updatedVariables
         });

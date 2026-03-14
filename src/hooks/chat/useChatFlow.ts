@@ -664,7 +664,7 @@ export const useChatFlow = () => {
             if (err.message !== 'Aborted') {
                 console.error(err);
                 state.setError(`Lỗi: ${err.message}`);
-                logger.logSystemMessage('api-error', 'api', err.message);
+                logger.logSystemMessage('api-error', 'network', err.message);
             }
         } finally {
             state.setLoading(false);

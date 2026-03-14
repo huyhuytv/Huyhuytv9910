@@ -234,7 +234,7 @@ export const RpgSettingsModal: React.FC<RpgSettingsModalProps> = ({ isOpen, onCl
                 
                 onClose();
             } catch (err) {
-                alert("Lỗi nhập file: " + (err instanceof Error ? e.message : String(err)));
+                alert("Lỗi nhập file: " + (err instanceof Error ? err.message : String(err)));
             }
         };
         reader.readAsText(file);

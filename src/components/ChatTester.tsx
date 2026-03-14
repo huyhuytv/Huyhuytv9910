@@ -125,7 +125,7 @@ export const ChatTester: React.FC<ChatTesterProps> = ({ sessionId, onBack }) => 
             <ChatHeader 
                 characterName={engine.card.name}
                 onBack={() => {
-                    engine.saveSession({}, true); 
+                    engine.saveSession({}); 
                     onBack();
                 }}
                 isImmersive={ui.isImmersive}

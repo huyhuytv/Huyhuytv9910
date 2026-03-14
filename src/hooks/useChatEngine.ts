@@ -214,7 +214,7 @@ export const useChatEngine = (sessionId: string | null) => {
         updateWorldInfoState: (state: Record<string, boolean>) => store.setSessionData({ worldInfoState: state }),
         updateWorldInfoPinned: (pinned: Record<string, boolean>) => store.setSessionData({ worldInfoPinned: pinned }),
         updateWorldInfoPlacement: (placement: Record<string, 'before' | 'after' | undefined>) => store.setSessionData({ worldInfoPlacement: placement }),
-        updateVisualState: (type: 'bg' | 'music' | 'sound' | 'class', value: string) => 
+        updateVisualState: (type: string, value: any) => 
             store.setSessionData({ visualState: { ...store.visualState, [type]: value } }),
         clearLogs: logger.clearLogs,
         
