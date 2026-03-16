@@ -253,6 +253,14 @@ const DataManagerView: React.FC<{
                  importedDb = rawData.data; // Snapshot wrapper
             } else if (rawData.template && rawData.template.tables) {
                  importedDb = rawData.template; // Config wrapper
+            } else if (rawData.config && rawData.config.id && !rawData.tables) {
+                 // Single table import
+                 const tableData = rawData.data || { rows: [] };
+                 importedDb = {
+                     version: database.version || "2.0",
+                     lastUpdated: Date.now(),
+                     tables: [{ config: rawData.config, data: tableData }]
+                 };
             }
 
             // Validation
