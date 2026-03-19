@@ -323,7 +323,8 @@ export async function constructChatPrompt(
     worldInfoState?: Record<string, boolean>,
     activeEntriesOverride?: WorldInfoEntry[],
     worldInfoPlacement?: Record<string, 'before' | 'after' | undefined>,
-    preset?: SillyTavernPreset
+    preset?: SillyTavernPreset,
+    disableInteractiveMode?: boolean
 ): Promise<{ fullPrompt: string, structuredPrompt: PromptSection[], rpgSnapshot?: RpgSnapshot }> { // Updated Return Type
 
     if (fullHistoryForThisTurn.length === 0) {
@@ -604,80 +605,82 @@ export async function constructChatPrompt(
         // 3. Trim Macro {{trim}} - Remove surrounding whitespace
         content = content.replace(/\s*{{trim}}\s*/gi, '');
 
-        // 4. Roll/Random Macros (Moved UP so they can be used in addvar)
-        const rollHandler = (_: string, countStr: string, sidesStr: string, modStr: string) => {
-            const count = countStr ? parseInt(countStr, 10) : 1; 
-            const sides = parseInt(sidesStr, 10);
-            let total = 0;
-            for (let i = 0; i < count; i++) total += Math.floor(Math.random() * sides) + 1;
-            if (modStr) total += parseInt(modStr.replace(/\s/g, ''), 10);
-            return String(total);
-        };
-        content = content.replace(/{{dice:(\s*\d*)d(\d+)\s*([+-]\s*\d+)?\s*}}/gi, rollHandler)
-                         .replace(/{{roll:(\s*\d*)d(\d+)\s*([+-]\s*\d+)?\s*}}/gi, rollHandler)
-                         .replace(/{{random:(.*?)}}/gi, (_, c) => {
-                             const args = c.split(',');
-                             return args[Math.floor(Math.random() * args.length)].trim();
-                         });
+        if (!disableInteractiveMode) {
+            // 4. Roll/Random Macros (Moved UP so they can be used in addvar)
+            const rollHandler = (_: string, countStr: string, sidesStr: string, modStr: string) => {
+                const count = countStr ? parseInt(countStr, 10) : 1; 
+                const sides = parseInt(sidesStr, 10);
+                let total = 0;
+                for (let i = 0; i < count; i++) total += Math.floor(Math.random() * sides) + 1;
+                if (modStr) total += parseInt(modStr.replace(/\s/g, ''), 10);
+                return String(total);
+            };
+            content = content.replace(/{{dice:(\s*\d*)d(\d+)\s*([+-]\s*\d+)?\s*}}/gi, rollHandler)
+                             .replace(/{{roll:(\s*\d*)d(\d+)\s*([+-]\s*\d+)?\s*}}/gi, rollHandler)
+                             .replace(/{{random:(.*?)}}/gi, (_, c) => {
+                                 const args = c.split(',');
+                                 return args[Math.floor(Math.random() * args.length)].trim();
+                             });
 
-        // 5. Add Variable Macro {{addvar::key::val}}
-        // FIX: Added multiline support via [\s\S]*?
-        content = content.replace(/{{addvar::([^:]+)::([\s\S]*?)}}/gi, (_, key, val) => {
-            const cleanKey = key.trim();
-            const cleanVal = val.trim();
+            // 5. Add Variable Macro {{addvar::key::val}}
+            // FIX: Added multiline support via [\s\S]*?
+            content = content.replace(/{{addvar::([^:]+)::([\s\S]*?)}}/gi, (_, key, val) => {
+                const cleanKey = key.trim();
+                const cleanVal = val.trim();
+                
+                // Try parsing as number if applicable
+                const numVal = Number(cleanVal);
+                const finalVal = (cleanVal !== '' && !isNaN(numVal)) ? numVal : cleanVal;
+
+                // DEBUG LOGGING
+                dispatchSystemLog('log', 'variable', `[PROMPT-DEBUG] Found addvar: Key="${cleanKey}", Val="${cleanVal}" (Parsed: ${finalVal})`);
+
+                variables = applyVariableOperation(variables, 'add', cleanKey, finalVal);
+                return '';
+            });
+
+            // 6. Set Global Variable
+            // FIX: Added multiline support via [\s\S]*?
+            content = content.replace(/{{setglobalvar::([^:]+)::([\s\S]*?)}}/gi, (_, key, val) => {
+                const cleanKey = key.trim();
+                const cleanVal = val.trim();
+                const numVal = Number(cleanVal);
+                const finalVal = (cleanVal !== '' && !isNaN(numVal)) ? numVal : cleanVal;
+
+                variables = applyVariableOperation(variables, 'set', 'globals.' + cleanKey, finalVal);
+                return ''; 
+            });
+
+            // 7. Set Variable
+            // FIX: Added multiline support via [\s\S]*?
+            content = content.replace(/{{setvar::([^:]+)::([\s\S]*?)}}/gi, (_, key, val) => {
+                const cleanKey = key.trim();
+                const cleanVal = val.trim();
+                const numVal = Number(cleanVal);
+                const finalVal = (cleanVal !== '' && !isNaN(numVal)) ? numVal : cleanVal;
+
+                dispatchSystemLog('log', 'variable', `[PROMPT-DEBUG] Found setvar: Key="${cleanKey}", Val="${cleanVal}"`);
+                variables = applyVariableOperation(variables, 'set', cleanKey, finalVal);
+                return ''; 
+            });
+
+            // 8. Get Variable (Display)
+            content = content.replace(/{{getvar::([^}]+)}}/gi, (_, path) => {
+                const cleanPath = path.trim();
+                const val = get(variables, cleanPath);
+                
+                // DEBUG LOGGING
+                dispatchSystemLog('log', 'variable', `[PROMPT-DEBUG] Executing getvar: "${cleanPath}" -> Result: ${val}`);
+                
+                return val !== undefined ? String(val) : '';
+            });
             
-            // Try parsing as number if applicable
-            const numVal = Number(cleanVal);
-            const finalVal = (cleanVal !== '' && !isNaN(numVal)) ? numVal : cleanVal;
-
-            // DEBUG LOGGING
-            dispatchSystemLog('log', 'variable', `[PROMPT-DEBUG] Found addvar: Key="${cleanKey}", Val="${cleanVal}" (Parsed: ${finalVal})`);
-
-            variables = applyVariableOperation(variables, 'add', cleanKey, finalVal);
-            return '';
-        });
-
-        // 6. Set Global Variable
-        // FIX: Added multiline support via [\s\S]*?
-        content = content.replace(/{{setglobalvar::([^:]+)::([\s\S]*?)}}/gi, (_, key, val) => {
-            const cleanKey = key.trim();
-            const cleanVal = val.trim();
-            const numVal = Number(cleanVal);
-            const finalVal = (cleanVal !== '' && !isNaN(numVal)) ? numVal : cleanVal;
-
-            variables = applyVariableOperation(variables, 'set', 'globals.' + cleanKey, finalVal);
-            return ''; 
-        });
-
-        // 7. Set Variable
-        // FIX: Added multiline support via [\s\S]*?
-        content = content.replace(/{{setvar::([^:]+)::([\s\S]*?)}}/gi, (_, key, val) => {
-            const cleanKey = key.trim();
-            const cleanVal = val.trim();
-            const numVal = Number(cleanVal);
-            const finalVal = (cleanVal !== '' && !isNaN(numVal)) ? numVal : cleanVal;
-
-            dispatchSystemLog('log', 'variable', `[PROMPT-DEBUG] Found setvar: Key="${cleanKey}", Val="${cleanVal}"`);
-            variables = applyVariableOperation(variables, 'set', cleanKey, finalVal);
-            return ''; 
-        });
-
-        // 8. Get Variable (Display)
-        content = content.replace(/{{getvar::([^}]+)}}/gi, (_, path) => {
-            const cleanPath = path.trim();
-            const val = get(variables, cleanPath);
-            
-            // DEBUG LOGGING
-            dispatchSystemLog('log', 'variable', `[PROMPT-DEBUG] Executing getvar: "${cleanPath}" -> Result: ${val}`);
-            
-            return val !== undefined ? String(val) : '';
-        });
-        
-        content = content.replace(/{{getglobalvar::([^}]+)}}/gi, (_, key) => {
-            const cleanKey = key.trim();
-            const val = get(variables, 'globals.' + cleanKey);
-            return val !== undefined ? String(val) : '';
-        });
+            content = content.replace(/{{getglobalvar::([^}]+)}}/gi, (_, key) => {
+                const cleanKey = key.trim();
+                const val = get(variables, 'globals.' + cleanKey);
+                return val !== undefined ? String(val) : '';
+            });
+        }
 
         // -----------------------------------------------
 
@@ -713,12 +716,14 @@ export async function constructChatPrompt(
             .replace(/{{scenario}}/g, card.scenario || '')
             .replace(/{{mes_example}}/g, card.mes_example || '');
 
-        // Run EJS with updated variables containing User Name
-        const ejsVars = { ...variables, user: userPersonaName };
-        content = await processEjsTemplate(content, ejsVars, card, lorebooks);
-        
-        // Final Identity Replace for any tokens output by EJS
-        content = replaceIdentityMacros(content);
+        if (!disableInteractiveMode) {
+            // Run EJS with updated variables containing User Name
+            const ejsVars = { ...variables, user: userPersonaName };
+            content = await processEjsTemplate(content, ejsVars, card, lorebooks);
+            
+            // Final Identity Replace for any tokens output by EJS
+            content = replaceIdentityMacros(content);
+        }
 
         content = content.trim();
         

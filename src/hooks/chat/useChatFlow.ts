@@ -344,7 +344,8 @@ export const useChatFlow = () => {
                 freshState.card!, freshState.longTermSummaries, chunkSize, freshState.variables, 
                 freshState.lastStateBlock, effectiveLorebooks, freshState.preset!.context_mode || 'standard',
                 freshState.persona?.name || 'User', freshState.worldInfoState,
-                activeEntries, freshState.worldInfoPlacement, freshState.preset!
+                activeEntries, freshState.worldInfoPlacement, freshState.preset!,
+                visualState.disableInteractiveMode
             );
 
             // 4. Stream Request
@@ -514,7 +515,8 @@ export const useChatFlow = () => {
                     freshState.card, freshState.longTermSummaries, chunkSize, freshState.variables, 
                     freshState.lastStateBlock, effectiveLorebooks, freshState.preset.context_mode || 'standard',
                     freshState.persona?.name || 'User', freshState.worldInfoState,
-                    scanResult.activeEntries, freshState.worldInfoPlacement, freshState.preset
+                    scanResult.activeEntries, freshState.worldInfoPlacement, freshState.preset,
+                    visualState.disableInteractiveMode
                 );
                 fullPrompt = constructed.fullPrompt;
                 generatedRpgSnapshot = constructed.rpgSnapshot;
