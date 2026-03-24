@@ -260,7 +260,7 @@ const expandKeysToContent = async (
 export const cleanMessageContent = (text: string): string => {
     if (!text) return '';
     return text
-        .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '') // Remove Thinking blocks
+        .replace(/<(thinking|inner_monologue)>[\s\S]*?<\/\1>/gi, '') // Remove Thinking blocks
         .replace(/<UpdateVariable(?:variable)?>[\s\S]*?<\/UpdateVariable(?:variable)?>/gi, '') // Remove Variable scripts
         .replace(/<LogicStore>[\s\S]*?<\/LogicStore>/gi, '') // Remove LogicStore
         .replace(/<VisualInterface>[\s\S]*?<\/VisualInterface>/gi, '') // Remove VisualInterface

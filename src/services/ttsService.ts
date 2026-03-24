@@ -66,7 +66,7 @@ const safetySettings = [
 export const sanitizeTextForSpeech = (text: string): string => {
     return text
         // 1. Loại bỏ các khối suy nghĩ <thinking>...</thinking>
-        .replace(/<thinking>[\s\S]*?<\/thinking>/gi, '')
+        .replace(/<(thinking|inner_monologue)>[\s\S]*?<\/\1>/gi, '')
         // 2. Loại bỏ tất cả thẻ HTML/XML
         .replace(/<[^>]+>/g, '')
         // 3. Loại bỏ các chỉ dẫn hành động trong ngoặc vuông [] hoặc tròn () thường chứa từ ngữ bạo lực
