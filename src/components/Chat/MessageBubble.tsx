@@ -126,19 +126,18 @@ const RenderedArenaContent: React.FC<{ content: string; isStreaming?: boolean }>
         if (!content) return { mainHtml: '', thinkingBlocks: [] };
 
         const foundThinkingBlocks: { label: string; content: string }[] = [];
-        const thinkingRegex = /<(thinking|thinking_requirements|step_outline|plan|inner_monologue)>([\s\S]*?)<\/\1>/gi;
+        const thinkingRegex = /<(thinking|thinking_requirements|step_outline|plan)>([\s\S]*?)<\/\1>/gi;
         
         let match;
         let extractedContent = content;
         while ((match = thinkingRegex.exec(content)) !== null) {
-            const tagName = match[1].toLowerCase();
+            const tagName = match[1];
             const innerContent = match[2].trim();
             
             let label = 'Suy nghĩ';
             if (tagName === 'thinking_requirements') label = 'Yêu cầu Suy nghĩ';
             if (tagName === 'step_outline') label = 'Dàn ý Bước đi';
             if (tagName === 'plan') label = 'Kế hoạch';
-            if (tagName === 'inner_monologue') label = 'Suy nghĩ nội tâm';
 
             foundThinkingBlocks.push({ label, content: innerContent });
             extractedContent = extractedContent.replace(match[0], '');
@@ -335,19 +334,18 @@ const MessageBubbleComponent: React.FC<MessageBubbleProps> = ({
         }
 
         const foundThinkingBlocks: { label: string; content: string }[] = [];
-        const thinkingRegex = /<(thinking|thinking_requirements|step_outline|plan|inner_monologue)>([\s\S]*?)<\/\1>/gi;
+        const thinkingRegex = /<(thinking|thinking_requirements|step_outline|plan)>([\s\S]*?)<\/\1>/gi;
         
         let match;
         let extractedContent = contentToRender;
         while ((match = thinkingRegex.exec(contentToRender)) !== null) {
-            const tagName = match[1].toLowerCase();
+            const tagName = match[1];
             const innerContent = match[2].trim();
             
             let label = 'Suy nghĩ';
             if (tagName === 'thinking_requirements') label = 'Yêu cầu Suy nghĩ';
             if (tagName === 'step_outline') label = 'Dàn ý Bước đi';
             if (tagName === 'plan') label = 'Kế hoạch';
-            if (tagName === 'inner_monologue') label = 'Suy nghĩ nội tâm';
 
             foundThinkingBlocks.push({ label, content: innerContent });
             extractedContent = extractedContent.replace(match[0], '');
