@@ -284,9 +284,9 @@ const MessageListComponent: React.FC<MessageListProps> = ({
                                 {(() => {
                                     let finalHtml = msg.interactiveHtml;
                                     let thinkingContent: string | null = null;
-                                    const thinkingMatch = finalHtml.match(/<thinking>([\s\S]*?)<\/thinking>/i);
+                                    const thinkingMatch = finalHtml.match(/<(thinking|inner_monologue)>([\s\S]*?)<\/\1>/i);
                                     if (thinkingMatch) {
-                                        thinkingContent = thinkingMatch[1].trim();
+                                        thinkingContent = thinkingMatch[2].trim();
                                         finalHtml = finalHtml.replace(thinkingMatch[0], '');
                                     }
                                     
